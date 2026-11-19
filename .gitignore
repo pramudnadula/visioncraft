@@ -19,5 +19,22 @@ dist/
 .idea/
 .DS_Store
 
-# Generated test outputs
+# Generated test outputs & runtime data
 output/
+.facevision_data/
+*.db
+*.sqlite*
+
+# Environment & secrets
+.env
+.env.local
+
+# Node / Frontend
+node_modules/
+apps/web/dist/
+.vite/
+coverage/
+
+# Tauri / Rust build artifacts
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
