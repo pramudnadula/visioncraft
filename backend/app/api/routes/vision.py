@@ -10,7 +10,12 @@ from backend.app.core.dependencies import AppStateContainer, get_container, requ
 from backend.app.core.exceptions import MediaNotFoundError
 from backend.app.database.models import MediaAsset
 from backend.app.detection.base import DetectorConfig
-from backend.app.vision.faces.expressions import FacialExpressionAnalyzer
+from backend.app.vision.faces.face_mesh import (
+    FaceMeshService,
+    FaceMeshSettings,
+    mesh_status,
+    summarize_faces,
+)
 from backend.app.vision.faces.mask_detection import FaceMaskClassifier
 from backend.app.vision.faces.mesh_3d import analyze_faces_3d
 from backend.app.vision.hands.detection import HandLandmarkDetector
@@ -49,7 +54,8 @@ def get_vision_capabilities(container: AppStateContainer = Depends(get_container
         "face_detection": True,
         "face_mesh_3d_ready": True,
         "face_mask_ready": mask_clf.is_available(),
-        "facial_analysis_ready": FacialExpressionAnalyzer.is_available(),
+        "facial_analysis_ready": mesh_status(models_dir)["available"],
+        "face_mesh_ready": mesh_status(models_dir)["available"],
         "hand_landmarks_ready": HandLandmarkDetector.is_available(),
         "pose_estimation_ready": PoseLandmarkDetector.is_available(),
         "object_detection_ready": obj_det.is_available(),
@@ -111,13 +117,33 @@ def _load_media_frame(container: AppStateContainer, media_id: str) -> cv2.typing
     return frame
 
 
+class FaceMeshRequest(BaseModel):
+    media_id: str
+    settings: FaceMeshSettings = FaceMeshSettings(enabled=True, include_landmarks_in_report=True)
+
+
+@router.get("/faces/mesh/status")
+def get_face_mesh_status(container: AppStateContainer = Depends(get_container)) -> dict[str, object]:
+    """Availability, licence, checksum and offline status of the face mesh model."""
+    return mesh_status(container.settings.resolved_models_dir)
+
+
 @router.post("/faces/analyze")
-def analyze_facial_landmarks(
-    payload: ObjectDetectRequest,
+def analyze_face_mesh(
+    payload: FaceMeshRequest,
     container: AppStateContainer = Depends(get_container),
 ) -> dict[str, object]:
+    """Detect 478 3D landmarks, head pose and expression indicators for an uploaded image."""
     frame = _load_media_frame(container, payload.media_id)
-    return FacialExpressionAnalyzer().analyze(frame)
+    service = FaceMeshService(
+        container.settings.resolved_models_dir,
+        max_faces=payload.settings.max_faces,
+        min_confidence=payload.settings.min_confidence,
+    )
+    try:
+        return summarize_faces(service.detect(frame), payload.settings)
+    finally:
+        service.close()
 
 
 @router.post("/hands/detect")

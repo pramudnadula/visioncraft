@@ -77,6 +77,7 @@ def generate_report_file(
                 "Temporary tracking IDs are session-only visual continuity markers and do not "
                 "represent verified biometric identities."
             ),
+            "face_mesh": manifest.get("face_mesh"),
             "details": manifest,
         }
         out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -96,6 +97,12 @@ def generate_report_file(
             writer.writerow(["model_id", model_id])
             writer.writerow(["total_detections", faces_detected])
             writer.writerow(["summary", summary_text])
+            mesh = manifest.get("face_mesh")
+            if isinstance(mesh, dict):
+                writer.writerow(["face_mesh_enabled", "yes"])
+                for key in ("face_count", "frames_analyzed", "frames_with_faces", "unique_face_tracks"):
+                    if key in mesh:
+                        writer.writerow([f"face_mesh_{key}", mesh[key]])
         return out_path
 
     # PDF generation via fpdf2
@@ -137,8 +144,52 @@ def generate_report_file(
         pdf.cell(0, 6, f"- {label}: {val}", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(3)
 
+    mesh = manifest.get("face_mesh")
+    section_no = 3
+    if isinstance(mesh, dict):
+        pdf.set_font("Helvetica", "B", 13)
+        pdf.cell(0, 8, f"{section_no}. Face Mesh Analysis", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 11)
+        model = mesh.get("model", {})
+        pdf.multi_cell(
+            0,
+            6,
+            f"Model: {model.get('name', 'n/a')} ({model.get('license', 'n/a')}). "
+            "Each face is analysed with 478 3D landmarks; the mesh overlay is drawn on the exported media.",
+            new_x="LMARGIN",
+            new_y="NEXT",
+        )
+        if "frames_analyzed" in mesh:
+            for label, key in (
+                ("Frames analysed", "frames_analyzed"),
+                ("Frames with faces", "frames_with_faces"),
+                ("Unique face tracks (temporary ids)", "unique_face_tracks"),
+                ("Most faces in one frame", "max_faces_in_frame"),
+            ):
+                pdf.cell(0, 6, f"- {label}: {mesh.get(key, 'n/a')}", new_x="LMARGIN", new_y="NEXT")
+        else:
+            pdf.cell(0, 6, f"- Faces with mesh: {mesh.get('face_count', 0)}", new_x="LMARGIN", new_y="NEXT")
+            for face in mesh.get("faces", [])[:10]:
+                pose = face.get("head_pose") or {}
+                cues = ", ".join(
+                    f"{c['name']} {c['score']:.2f}" for c in face.get("expression_indicators", [])[:3]
+                )
+                pdf.multi_cell(
+                    0,
+                    5,
+                    f"  Face #{face.get('tracking_id')}: yaw {pose.get('yaw_deg', 'n/a')}, "
+                    f"pitch {pose.get('pitch_deg', 'n/a')}, roll {pose.get('roll_deg', 'n/a')}; "
+                    f"movement indicators: {cues or 'none above threshold'}",
+                    new_x="LMARGIN",
+                    new_y="NEXT",
+                )
+        pdf.set_font("Helvetica", "I", 9)
+        pdf.multi_cell(0, 5, str(mesh.get("disclaimer", "")), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+        section_no += 1
+
     pdf.set_font("Helvetica", "B", 13)
-    pdf.cell(0, 8, "3. Limitations & Privacy Notes", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 8, f"{section_no}. Limitations & Privacy Notes", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 10)
     pdf.multi_cell(
         0,

@@ -11,6 +11,7 @@ import numpy as np
 
 from backend.app.detection.base import Detection, FaceDetector
 from backend.app.privacy.blur import BlurMode, draw_detections
+from backend.app.vision.faces.face_mesh import FaceMeshService, FaceMeshSettings, summarize_faces
 
 
 @dataclass(slots=True)
@@ -20,6 +21,7 @@ class WebcamFrameResult:
     detections: list[Detection]
     latency_ms: float
     annotated_jpeg: bytes | None = None
+    face_mesh: dict[str, object] | None = None
 
 
 class WebcamProcessor:
@@ -33,6 +35,8 @@ class WebcamProcessor:
         blur_mode: BlurMode = "none",
         draw_boxes: bool = True,
         encode_jpeg: bool = True,
+        mesh_service: FaceMeshService | None = None,
+        mesh_settings: FaceMeshSettings | None = None,
     ) -> WebcamFrameResult:
         start = time.perf_counter()
         detections = detector.detect(frame)
@@ -47,6 +51,13 @@ class WebcamProcessor:
                 draw_boxes=draw_boxes,
                 show_hud=False,
             )
+            mesh_summary: dict[str, object] | None = None
+            if mesh_service is not None and mesh_settings is not None and mesh_settings.enabled:
+                mesh_faces = mesh_service.detect(frame)
+                mesh_service.render(rendered, mesh_faces, mesh_settings)
+                mesh_summary = summarize_faces(
+                    mesh_faces, mesh_settings.model_copy(update={"include_landmarks_in_report": False})
+                )
             ok, buf = cv2.imencode(".jpg", rendered, [int(cv2.IMWRITE_JPEG_QUALITY), 82])
             if ok:
                 annotated_jpeg = buf.tobytes()
@@ -55,6 +66,7 @@ class WebcamProcessor:
             detections=detections,
             latency_ms=latency_ms,
             annotated_jpeg=annotated_jpeg,
+            face_mesh=mesh_summary if encode_jpeg else None,
         )
 
     @staticmethod

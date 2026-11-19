@@ -28,6 +28,7 @@ from backend.app.processing.batch import BatchProcessingService
 from backend.app.processing.image import ImageProcessingConfig, ImageProcessingService
 from backend.app.processing.video import VideoProcessingConfig, VideoProcessingService
 from backend.app.storage.base import StorageAdapter
+from backend.app.vision.faces.face_mesh import FaceMeshSettings
 
 logger = get_logger("jobs.manager")
 
@@ -301,6 +302,8 @@ class JobManager:
 
             cfg_dict = json.loads(job.config_json)
             media_ids: list[str] = json.loads(job.input_media_ids_json)
+            mesh_raw = cfg_dict.get("face_mesh")
+            mesh_settings = FaceMeshSettings.model_validate(mesh_raw) if mesh_raw else None
 
             with self.db.session_scope() as session:
                 assets = session.query(MediaAsset).filter(MediaAsset.id.in_(media_ids)).all()
@@ -340,6 +343,8 @@ class JobManager:
                     show_hud=bool(cfg_dict.get("show_hud", True)),
                     draw_boxes=bool(cfg_dict.get("draw_boxes", True)),
                     max_dimension=self.settings.max_image_dimension,
+                    face_mesh=mesh_settings,
+                    models_dir=self.settings.resolved_models_dir,
                 )
                 img_res = self._image_service.process(
                     input_path,
@@ -364,6 +369,8 @@ class JobManager:
                     save_privacy_video=bool(cfg_dict.get("save_privacy_video", False)),
                     max_frames=cfg_dict.get("max_frames"),
                     max_duration_seconds=self.settings.max_video_duration_seconds,
+                    face_mesh=mesh_settings,
+                    models_dir=self.settings.resolved_models_dir,
                 )
 
                 def _on_video_progress(done: int, total: int, faces: int) -> None:
@@ -404,6 +411,8 @@ class JobManager:
                     show_hud=bool(cfg_dict.get("show_hud", True)),
                     draw_boxes=bool(cfg_dict.get("draw_boxes", True)),
                     max_dimension=self.settings.max_image_dimension,
+                    face_mesh=mesh_settings,
+                    models_dir=self.settings.resolved_models_dir,
                 )
 
                 def _on_batch_progress(done: int, total: int, faces: int) -> None:
@@ -492,6 +501,8 @@ class JobManager:
         }
         if res.blurred_path and res.blurred_path.is_file():
             files["privacy_blurred"] = res.blurred_path.name
+        if res.face_mesh is not None:
+            files["face_mesh_json"] = "face_mesh.json"
         if res.crop_paths:
             files["crops"] = [str(p.relative_to(output_dir)) for p in res.crop_paths]
         return {
@@ -502,6 +513,16 @@ class JobManager:
             "face_count": len(res.detections),
             "duration_ms": round(res.duration_ms, 2),
             "detections": [d.to_dict() for d in res.detections],
+            "face_mesh": (
+                {
+                    **res.face_mesh,
+                    "faces": [
+                        {k: v for k, v in face.items() if k != "landmarks"} for face in res.face_mesh["faces"]
+                    ],
+                }
+                if res.face_mesh is not None
+                else None
+            ),
             "files": files,
         }
 
@@ -514,6 +535,8 @@ class JobManager:
         }
         if res.privacy_video_path and res.privacy_video_path.is_file():
             files["privacy_video"] = res.privacy_video_path.name
+        if res.face_mesh is not None:
+            files["face_mesh_json"] = "face_mesh.json"
         return {
             "type": "video",
             "job_id": job_id,
@@ -524,5 +547,6 @@ class JobManager:
             "total_detections": res.total_detections,
             "unique_track_count": res.unique_track_count,
             "duration_ms": round(res.duration_ms, 2),
+            "face_mesh": res.face_mesh,
             "files": files,
         }

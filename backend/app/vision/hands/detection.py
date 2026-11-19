@@ -15,7 +15,12 @@ class HandLandmarkDetector:
 
     @staticmethod
     def is_available() -> bool:
-        return importlib.util.find_spec("mediapipe") is not None
+        if importlib.util.find_spec("mediapipe") is None:
+            return False
+        import mediapipe as mp  # type: ignore[import-not-found]
+
+        # MediaPipe >= 1.0 removed the legacy `solutions` API this adapter depends on.
+        return hasattr(mp, "solutions")
 
     def detect(self, frame: cv2.typing.MatLike) -> dict[str, Any]:
         if not self.is_available():

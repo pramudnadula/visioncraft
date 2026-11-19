@@ -15,6 +15,7 @@ from backend.app.core.exceptions import MediaValidationError
 from backend.app.core.logging import get_logger
 from backend.app.detection.base import Detection, DetectorMetadata, FaceDetector
 from backend.app.privacy.blur import BlurMode, apply_privacy_blur, draw_detections
+from backend.app.vision.faces.face_mesh import FaceMeshService, FaceMeshSettings, summarize_faces
 
 logger = get_logger("processing.image")
 
@@ -32,6 +33,8 @@ class ImageProcessingConfig:
     box_color: tuple[int, int, int] = (0, 220, 120)
     box_thickness: int = 2
     max_dimension: int = 16384
+    face_mesh: FaceMeshSettings | None = None
+    models_dir: Path | None = None
 
 
 @dataclass(slots=True)
@@ -48,6 +51,7 @@ class ImageProcessingResult:
     crop_paths: list[Path] = field(default_factory=list)
     report_json_path: Path | None = None
     report_csv_path: Path | None = None
+    face_mesh: dict[str, Any] | None = None
 
     def to_report_dict(self, *, job_id: str | None = None, input_name: str = "") -> dict[str, Any]:
         return {
@@ -61,6 +65,7 @@ class ImageProcessingResult:
             "detection_count": len(self.detections),
             "processing_duration_ms": round(self.duration_ms, 2),
             "detections": [d.to_dict() for d in self.detections],
+            "face_mesh": self.face_mesh,
         }
 
 
@@ -107,6 +112,23 @@ class ImageProcessingService:
             show_hud=cfg.show_hud,
             draw_boxes=cfg.draw_boxes,
         )
+        mesh_summary: dict[str, Any] | None = None
+        mesh_cfg = cfg.face_mesh
+        if mesh_cfg is not None and mesh_cfg.enabled:
+            if cfg.models_dir is None:
+                raise MediaValidationError("Face mesh requires a models directory.")
+            service = FaceMeshService(
+                cfg.models_dir,
+                max_faces=mesh_cfg.max_faces,
+                min_confidence=mesh_cfg.min_confidence,
+            )
+            try:
+                mesh_faces = service.detect(frame)
+                service.render(annotated, mesh_faces, mesh_cfg)
+                mesh_summary = summarize_faces(mesh_faces, mesh_cfg)
+            finally:
+                service.close()
+
         annotated_path = output_dir / "annotated.png"
         if not cv2.imwrite(str(annotated_path), annotated):
             raise MediaValidationError("Failed to write annotated output image.")
@@ -148,7 +170,11 @@ class ImageProcessingService:
             annotated_path=annotated_path,
             blurred_path=blurred_path,
             crop_paths=crop_paths,
+            face_mesh=mesh_summary,
         )
+
+        if mesh_summary is not None:
+            (output_dir / "face_mesh.json").write_text(json.dumps(mesh_summary, indent=2), encoding="utf-8")
 
         report_json_path = output_dir / "report.json"
         report_payload = result.to_report_dict(job_id=job_id, input_name=input_name or input_path.name)

@@ -18,6 +18,14 @@ from backend.app.core.logging import get_logger
 from backend.app.detection.base import Detection, DetectorMetadata, FaceDetector
 from backend.app.privacy.blur import BlurMode, apply_privacy_blur, draw_detections
 from backend.app.processing.tracking import FaceTracker
+from backend.app.vision.faces.face_mesh import (
+    DISCLAIMER,
+    MODEL_FILENAME,
+    MODEL_LICENSE,
+    FaceMeshService,
+    FaceMeshSettings,
+    summarize_faces,
+)
 
 logger = get_logger("processing.video")
 
@@ -49,6 +57,8 @@ class VideoProcessingConfig:
     save_privacy_video: bool = False
     max_frames: int | None = None
     max_duration_seconds: int = 3600
+    face_mesh: FaceMeshSettings | None = None
+    models_dir: Path | None = None
 
 
 @dataclass(slots=True)
@@ -76,6 +86,7 @@ class VideoProcessingResult:
     report_json_path: Path | None = None
     report_csv_path: Path | None = None
     timeline: list[VideoTimelineEvent] = field(default_factory=list)
+    face_mesh: dict[str, Any] | None = None
 
 
 class VideoProcessingService:
@@ -137,8 +148,22 @@ class VideoProcessingService:
                 f"Video duration ({meta.duration_seconds:.1f}s) exceeds limit ({cfg.max_duration_seconds}s)."
             )
 
+        mesh_cfg = cfg.face_mesh
+        mesh_service: FaceMeshService | None = None
+        if mesh_cfg is not None and mesh_cfg.enabled:
+            if cfg.models_dir is None:
+                raise MediaValidationError("Face mesh requires a models directory.")
+            mesh_service = FaceMeshService(
+                cfg.models_dir,
+                max_faces=mesh_cfg.max_faces,
+                min_confidence=mesh_cfg.min_confidence,
+                stream=True,
+            )
+
         cap = cv2.VideoCapture(str(input_path))
         if not cap.isOpened():
+            if mesh_service is not None:
+                mesh_service.close()
             raise MediaValidationError("Unable to open video file for processing.")
 
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -162,6 +187,9 @@ class VideoProcessingService:
         frames_processed = 0
         raw_frame_idx = 0
         total_detections = 0
+        mesh_frames: list[dict[str, Any]] = []
+        mesh_track_ids: set[int] = set()
+        mesh_frames_with_faces = 0
         start = time.perf_counter()
 
         try:
@@ -200,6 +228,23 @@ class VideoProcessingService:
                     show_hud=cfg.show_hud,
                     draw_boxes=cfg.draw_boxes,
                 )
+                if mesh_service is not None and mesh_cfg is not None:
+                    mesh_faces = mesh_service.detect(
+                        frame, timestamp_ms=int((raw_frame_idx - 1) / meta.fps * 1000)
+                    )
+                    mesh_service.render(annotated, mesh_faces, mesh_cfg)
+                    if mesh_faces:
+                        mesh_frames_with_faces += 1
+                    for mf in mesh_faces:
+                        if mf.tracking_id is not None:
+                            mesh_track_ids.add(mf.tracking_id)
+                    mesh_frames.append(
+                        {
+                            "frame_number": frames_processed + 1,
+                            "timestamp_seconds": round((raw_frame_idx - 1) / meta.fps, 3),
+                            **summarize_faces(mesh_faces, mesh_cfg),
+                        }
+                    )
                 writer.write(annotated)
 
                 if privacy_writer is not None:
@@ -232,12 +277,34 @@ class VideoProcessingService:
             writer.release()
             if privacy_writer is not None:
                 privacy_writer.release()
+            if mesh_service is not None:
+                mesh_service.close()
 
         if frames_processed == 0:
             raise MediaValidationError("Video contained zero readable frames.")
 
         duration_ms = (time.perf_counter() - start) * 1000.0
         model_meta = detector.get_metadata()
+
+        mesh_summary: dict[str, Any] | None = None
+        if mesh_cfg is not None and mesh_cfg.enabled:
+            for frame_entry in mesh_frames:
+                frame_entry.pop("model", None)
+                frame_entry.pop("settings", None)
+                frame_entry.pop("disclaimer", None)
+            mesh_summary = {
+                "frames_analyzed": len(mesh_frames),
+                "frames_with_faces": mesh_frames_with_faces,
+                "unique_face_tracks": len(mesh_track_ids),
+                "max_faces_in_frame": max((f["face_count"] for f in mesh_frames), default=0),
+                "model": {"name": MODEL_FILENAME, "license": MODEL_LICENSE},
+                "settings": mesh_cfg.model_dump(),
+                "disclaimer": DISCLAIMER,
+                "note": "Tracking ids are temporary per-video markers, not verified identities.",
+            }
+            (output_dir / "face_mesh.json").write_text(
+                json.dumps({**mesh_summary, "frames": mesh_frames}, indent=2), encoding="utf-8"
+            )
 
         report_json_path = output_dir / "report.json"
         report_payload = {
@@ -259,6 +326,7 @@ class VideoProcessingService:
             "total_detections": total_detections,
             "unique_track_count": len(unique_track_ids),
             "processing_duration_ms": round(duration_ms, 2),
+            "face_mesh": mesh_summary,
             "timeline": [
                 {
                     "frame_number": ev.frame_number,
@@ -296,4 +364,5 @@ class VideoProcessingService:
             report_json_path=report_json_path,
             report_csv_path=report_csv_path,
             timeline=timeline,
+            face_mesh=mesh_summary,
         )

@@ -8,6 +8,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from backend.app.privacy.blur import BlurMode
+from backend.app.vision.faces.face_mesh import FaceMeshSettings
 
 
 class HealthResponse(BaseModel):
@@ -66,6 +67,7 @@ class JobCreateRequest(BaseModel):
     show_hud: bool = True
     draw_boxes: bool = True
     max_frames: int | None = Field(default=None, ge=1)
+    face_mesh: FaceMeshSettings | None = None
 
 
 class JobResponse(BaseModel):
