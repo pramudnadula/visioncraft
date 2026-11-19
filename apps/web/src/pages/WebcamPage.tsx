@@ -16,7 +16,17 @@ export function WebcamPage() {
   const [running, setRunning] = useState(false);
   const [modelId, setModelId] = useState("haar");
   const [blurMode, setBlurMode] = useState<BlurMode>("none");
+  const modelIdRef = useRef(modelId);
+  const blurModeRef = useRef(blurMode);
   const [annotatedSrc, setAnnotatedSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    modelIdRef.current = modelId;
+  }, [modelId]);
+
+  useEffect(() => {
+    blurModeRef.current = blurMode;
+  }, [blurMode]);
   const [faceCount, setFaceCount] = useState(0);
   const [latencyMs, setLatencyMs] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +110,14 @@ export function WebcamPage() {
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const frame = canvas.toDataURL("image/jpeg", 0.75);
-    ws.send(JSON.stringify({ frame, model_id: modelId, blur_mode: blurMode, draw_boxes: true }));
+    ws.send(
+      JSON.stringify({
+        frame,
+        model_id: modelIdRef.current,
+        blur_mode: blurModeRef.current,
+        draw_boxes: true,
+      })
+    );
   };
 
   const captureScreenshot = () => {
@@ -193,11 +210,15 @@ export function WebcamPage() {
 
       {error && <div className="p-3 rounded-lg bg-rose-500/15 text-rose-400 text-sm">{error}</div>}
 
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-black p-4 flex items-center justify-center min-h-[380px]">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-black p-2 flex items-center justify-center h-[calc(100vh-14rem)] min-h-[480px]">
         <video ref={videoRef} className="hidden" muted playsInline />
         <canvas ref={canvasRef} className="hidden" />
         {annotatedSrc ? (
-          <img src={annotatedSrc} alt="Live webcam detection" className="max-h-[480px] rounded-lg" />
+          <img
+            src={annotatedSrc}
+            alt="Live webcam detection"
+            className="w-full h-full object-contain rounded-lg"
+          />
         ) : (
           <p className="text-sm text-slate-500">Click Start Camera to begin live face detection.</p>
         )}
