@@ -1,5 +1,6 @@
 import type {
   CapabilitiesResponse,
+  CloudTestResponse,
   DashboardStats,
   HealthResponse,
   JobCreateRequest,
@@ -56,6 +57,12 @@ export const api = {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+    }),
+  testCloudConnection: (cloud_api_url: string) =>
+    request<CloudTestResponse>("/settings/test-cloud", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cloud_api_url }),
     }),
   listMedia: () => request<MediaAsset[]>("/media"),
   uploadMedia: async (file: File): Promise<MediaAsset> => {

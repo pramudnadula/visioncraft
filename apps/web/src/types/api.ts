@@ -100,7 +100,14 @@ export interface SettingsData {
   default_blur_mode: BlurMode;
   default_confidence_threshold: number;
   allow_cloud_processing: boolean;
+  cloud_api_url: string | null;
   retention_days: number;
+}
+
+export interface CloudTestResponse {
+  reachable: boolean;
+  status_code: number | null;
+  message: string;
 }
 
 export interface DashboardStats {

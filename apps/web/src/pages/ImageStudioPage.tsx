@@ -15,6 +15,8 @@ export function ImageStudioPage() {
   const [blurMode, setBlurMode] = useState<BlurMode>("none");
   const [confidence, setConfidence] = useState(0.6);
   const [saveCrops, setSaveCrops] = useState(true);
+  const [useCloud, setUseCloud] = useState(false);
+  const [cloudConsent, setCloudConsent] = useState(false);
   const [selectedFaces, setSelectedFaces] = useState<number[] | null>(null);
   const [viewMode, setViewMode] = useState<"annotated" | "original" | "privacy">("annotated");
   const [job, setJob] = useState<JobResponse | null>(null);
@@ -46,8 +48,8 @@ export function ImageStudioPage() {
         job_type: "image",
         media_ids: [media.id],
         model_id: modelId || settings?.default_model_id || "haar",
-        processing_mode: settings?.execution_mode ?? "web_local_agent",
-        cloud_consent: false,
+        processing_mode: useCloud ? "cloud" : (settings?.execution_mode ?? "web_local_agent"),
+        cloud_consent: useCloud ? cloudConsent : false,
         blur_mode: blurMode,
         confidence_threshold: confidence,
         save_crops: saveCrops,
@@ -152,9 +154,47 @@ export function ImageStudioPage() {
               <span>Extract face crops (PNG)</span>
             </label>
 
+            {settings?.allow_cloud_processing && (
+              <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+                <label className="flex items-center justify-between">
+                  <span className="font-medium">Processing Mode</span>
+                  <select
+                    value={useCloud ? "cloud" : "local"}
+                    onChange={(e) => {
+                      const nextCloud = e.target.value === "cloud";
+                      setUseCloud(nextCloud);
+                      if (!nextCloud) setCloudConsent(false);
+                    }}
+                    className="rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-2 py-1"
+                  >
+                    <option value="local" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                      Local (Private)
+                    </option>
+                    <option value="cloud" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                      Cloud Server
+                    </option>
+                  </select>
+                </label>
+                {useCloud && (
+                  <label className="flex items-start gap-2 text-amber-500">
+                    <input
+                      type="checkbox"
+                      checked={cloudConsent}
+                      onChange={(e) => setCloudConsent(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      I consent to transferring this image to{" "}
+                      {settings.cloud_api_url || "the configured cloud server"}.
+                    </span>
+                  </label>
+                )}
+              </div>
+            )}
+
             <button
               type="button"
-              disabled={!media}
+              disabled={!media || (useCloud && !cloudConsent)}
               onClick={startProcessing}
               className="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-sm font-semibold inline-flex items-center justify-center gap-2"
             >
