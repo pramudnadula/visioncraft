@@ -27,6 +27,9 @@ backend = [
 cloud = [
     "boto3>=1.35,<2",
 ]
+onnx = [
+    "onnxruntime>=1.19",
+]
 dev = [
     "pytest>=8.0",
     "httpx>=0.27,<1",
