@@ -69,15 +69,29 @@ class WebcamProcessor:
                 mesh_summary = summarize_faces(
                     mesh_faces, mesh_settings.model_copy(update={"include_landmarks_in_report": False})
                 )
-            if emotion_mode != "off" and detections:
-                emotion_summary = analyze_face_emotions(
-                    frame,
-                    detections,
-                    mode=emotion_mode,
-                    models_dir=models_dir,
-                    mesh_faces=mesh_faces,
-                )
-                draw_emotion_overlays(rendered, detections, emotion_summary)
+            if emotion_mode != "off":
+                emotion_dets = detections
+                if not emotion_dets and mesh_faces:
+                    emotion_dets = [
+                        Detection(
+                            x=mf.bbox[0],
+                            y=mf.bbox[1],
+                            width=mf.bbox[2],
+                            height=mf.bbox[3],
+                            confidence=1.0,
+                            tracking_id=mf.tracking_id,
+                        )
+                        for mf in mesh_faces
+                    ]
+                if emotion_dets:
+                    emotion_summary = analyze_face_emotions(
+                        frame,
+                        emotion_dets,
+                        mode=emotion_mode,
+                        models_dir=models_dir,
+                        mesh_faces=mesh_faces,
+                    )
+                    draw_emotion_overlays(rendered, emotion_dets, emotion_summary)
             ok, buf = cv2.imencode(".jpg", rendered, [int(cv2.IMWRITE_JPEG_QUALITY), 82])
             if ok:
                 annotated_jpeg = buf.tobytes()
