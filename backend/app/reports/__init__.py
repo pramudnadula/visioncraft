@@ -1,0 +1,1 @@
+"""Universal report generation package."""

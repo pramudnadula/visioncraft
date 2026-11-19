@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from backend.app.api.routes import jobs, media, media_tools, models, system
+from backend.app.api.routes import jobs, media, media_tools, models, reports, system, vision
 from backend.app.api.routes import settings as settings_routes
 from backend.app.api.websocket import ws_router
 from backend.app.core.config import Settings, get_settings
@@ -91,6 +91,8 @@ def create_app(custom_settings: Settings | None = None) -> FastAPI:
     app.include_router(media_tools.router, prefix=prefix)
     app.include_router(jobs.router, prefix=prefix)
     app.include_router(models.router, prefix=prefix)
+    app.include_router(vision.router, prefix=prefix)
+    app.include_router(reports.router, prefix=prefix)
     app.include_router(settings_routes.router, prefix=prefix)
     app.include_router(ws_router)
 

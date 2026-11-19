@@ -1,0 +1,137 @@
+"""General AI Vision and Vehicle Analytics endpoints."""
+
+from __future__ import annotations
+
+import cv2
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
+
+from backend.app.core.dependencies import AppStateContainer, get_container, require_api_token
+from backend.app.core.exceptions import MediaNotFoundError
+from backend.app.database.models import MediaAsset
+from backend.app.vision.objects.detection import VEHICLE_CLASSES, YOLOv8ONNXObjectDetector
+from backend.app.vision.objects.tracking import ObjectTracker
+from backend.app.vision.vehicles.counting import CountingLine, VehicleCounter
+
+router = APIRouter(
+    prefix="/vision",
+    tags=["vision"],
+    dependencies=[Depends(require_api_token)],
+)
+
+
+class ObjectDetectRequest(BaseModel):
+    media_id: str
+    confidence_threshold: float = Field(default=0.35, ge=0.05, le=0.95)
+    vehicles_only: bool = False
+
+
+class VehicleCountRequest(BaseModel):
+    media_id: str
+    confidence_threshold: float = Field(default=0.35, ge=0.05, le=0.95)
+    line_y_ratio: float = Field(default=0.5, ge=0.05, le=0.95)
+    max_frames: int = Field(default=150, ge=1, le=3600)
+
+
+@router.get("/capabilities")
+def get_vision_capabilities(container: AppStateContainer = Depends(get_container)) -> dict[str, object]:
+    models_dir = container.settings.resolved_models_dir
+    obj_det = YOLOv8ONNXObjectDetector(models_dir=models_dir)
+    return {
+        "face_detection": True,
+        "object_detection_ready": obj_det.is_available(),
+        "vehicle_analytics_ready": obj_det.is_available(),
+        "object_model_hint": (
+            "Place yolov8n.onnx in models/ (or download via Model Hub) to enable "
+            "object & vehicle detection."
+        ),
+    }
+
+
+@router.post("/objects/detect")
+def detect_objects(
+    payload: ObjectDetectRequest,
+    container: AppStateContainer = Depends(get_container),
+) -> dict[str, object]:
+    with container.db.session_scope() as session:
+        asset = session.get(MediaAsset, payload.media_id)
+        if asset is None:
+            raise MediaNotFoundError(f"Media '{payload.media_id}' not found.")
+        storage_key = asset.storage_key
+
+    local_path = container.storage.resolve_local_path(storage_key)
+    frame = cv2.imread(str(local_path))
+    if frame is None:
+        raise MediaNotFoundError("Could not decode image.")
+
+    detector = YOLOv8ONNXObjectDetector(
+        models_dir=container.settings.resolved_models_dir,
+        confidence_threshold=payload.confidence_threshold,
+    )
+    try:
+        allowed = VEHICLE_CLASSES if payload.vehicles_only else None
+        detections = detector.detect(frame, allowed_classes=allowed)
+    finally:
+        detector.release()
+
+    return {
+        "media_id": payload.media_id,
+        "count": len(detections),
+        "detections": [d.to_dict() for d in detections],
+    }
+
+
+@router.post("/vehicles/count")
+def count_vehicles_in_video(
+    payload: VehicleCountRequest,
+    container: AppStateContainer = Depends(get_container),
+) -> dict[str, object]:
+    with container.db.session_scope() as session:
+        asset = session.get(MediaAsset, payload.media_id)
+        if asset is None:
+            raise MediaNotFoundError(f"Media '{payload.media_id}' not found.")
+        storage_key = asset.storage_key
+
+    local_path = container.storage.resolve_local_path(storage_key)
+    cap = cv2.VideoCapture(str(local_path))
+    if not cap.isOpened():
+        raise MediaNotFoundError("Could not open video.")
+
+    detector = YOLOv8ONNXObjectDetector(
+        models_dir=container.settings.resolved_models_dir,
+        confidence_threshold=payload.confidence_threshold,
+    )
+    detector.initialize()
+    tracker = ObjectTracker()
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 640)
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 480)
+    line_y = int(height * payload.line_y_ratio)
+    counter = VehicleCounter(line=CountingLine(0, line_y, width, line_y))
+
+    frames_processed = 0
+    try:
+        while frames_processed < payload.max_frames:
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                break
+            dets = detector.detect(frame, allowed_classes=VEHICLE_CLASSES, frame_number=frames_processed + 1)
+            tracked = tracker.update(dets)
+            counter.update(tracked)
+            frames_processed += 1
+    finally:
+        cap.release()
+        detector.release()
+
+    s = counter.summary
+    return {
+        "media_id": payload.media_id,
+        "frames_processed": frames_processed,
+        "total_vehicles": s.total_vehicles,
+        "cars": s.cars,
+        "buses": s.buses,
+        "trucks": s.trucks,
+        "motorcycles": s.motorcycles,
+        "bicycles": s.bicycles,
+        "entry_count": s.entry_count,
+        "exit_count": s.exit_count,
+    }
