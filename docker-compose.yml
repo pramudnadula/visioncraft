@@ -1,0 +1,29 @@
+services:
+  facevision-api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "8000:8000"
+    environment:
+      FACEVISION_EXECUTION_MODE: cloud
+      FACEVISION_ALLOW_CLOUD_PROCESSING: "true"
+      FACEVISION_DATABASE_URL: postgresql+psycopg://facevision:facevision@postgres:5432/facevision
+    volumes:
+      - facevision_data:/app/.facevision_data
+      - ./models:/app/models:ro
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: facevision
+      POSTGRES_PASSWORD: facevision
+      POSTGRES_DB: facevision
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  facevision_data:
+  postgres_data:

@@ -1,135 +1,67 @@
-# Face Detection Python
+# FaceVision — AI Face Detection & Privacy Platform
 
-A modular, open-source face detection CLI and Python library built with OpenCV. Originally started in 2022 as a single-script Haar Cascade experiment, it is structured into clean, testable components for real-world image, batch directory, video, and live webcam workflows.
+**FaceVision** is a modern, cross-platform AI face detection, tracking, and privacy anonymization platform. Evolved from the legacy 2022 Python face-detection script, it preserves full backward compatibility with the `face-detect` CLI while providing:
 
-## Features
-
-- **Multiple Input Sources**: Live webcam, single image, batch image directory, or video file.
-- **Pluggable Detection Backends**:
-  - **Haar Cascade** (default, zero extra downloads, CPU-fast)
-  - **YuNet DNN** (`--yunet-model <model.onnx>` for higher accuracy with confidence scores)
-- **Privacy Anonymization**: Blur (`--blur gaussian`) or pixelate (`--blur pixelate`) detected faces for GDPR/media workflows.
-- **Face Crop Extraction**: Automatically extract and save cropped faces (`--save-crops <dir>`).
-- **Structured JSON Reports**: Export bounding boxes, confidence scores, and frame counts (`--export-json <file.json>`).
-- **Live HUD**: Real-time face counter and FPS overlay on video/webcam streams (`--no-hud` to disable).
-
----
-
-## Architecture
-
-```text
-Face_Detection_Python/
-├── src/face_detector/
-│   ├── models.py      # Detection & DetectorConfig dataclasses
-│   ├── backends.py    # Pluggable detectors (HaarCascadeBackend, YuNetBackend)
-│   ├── overlay.py     # Bounding boxes, Gaussian/pixelate privacy blur, HUD
-│   ├── pipeline.py    # Image, batch directory, video/webcam, crops, JSON export
-│   └── cli.py         # Argparse CLI (`face-detect` / `python -m face_detector`)
-├── tests/             # Pytest unit & integration tests
-├── Face_Detector.py   # Backward-compatible CLI wrapper
-├── pyproject.toml     # Package metadata & console script entrypoint
-├── Makefile           # One-command setup, test, and demo tasks
-└── requirements.txt   # Pinned runtime dependencies
-```
-
-| Component | Responsibility |
-| :--- | :--- |
-| `models.py` | Immutable `Detection` objects and `DetectorConfig` settings. |
-| `backends.py` | `FaceDetectorBackend` protocol, `HaarCascadeBackend`, `YuNetBackend`, and factory. |
-| `overlay.py` | Frame annotation, ROI-safe Gaussian/pixelate anonymization, and FPS/count HUD. |
-| `pipeline.py` | End-to-end orchestration for images, folders, video streams, crop saving, and JSON output. |
-| `cli.py` | Unified CLI entrypoint exposed as `face-detect`, `python -m face_detector`, and `Face_Detector.py`. |
+- **Modern Web App** (`apps/web/`): React, TypeScript, Vite, Tailwind CSS, TanStack Query, React Router.
+- **Desktop App** (`apps/desktop/`): Tauri 2 shell managing the local Python backend lifecycle.
+- **Shared Python CV Engine & FastAPI Backend** (`backend/app/`):
+  - Pluggable detectors: Haar Cascade (built-in), YuNet ONNX, OpenCV DNN, and optional SCRFD/RetinaFace adapters.
+  - Image Studio: dynamic uploads, selective privacy blur (Gaussian / pixelate), face crops, JSON/CSV reports.
+  - Video Studio: streaming frame-by-frame processing, temporary IoU face tracking, cancellation, MP4 + timeline JSON/CSV export.
+  - Live Webcam: real-time WebSocket detection & privacy blur via browser `MediaDevices`.
+  - Batch Processing: multi-file & folder import with ZIP export.
+  - Hybrid Local-First Privacy: local processing by default; cloud processing strictly opt-in with explicit consent.
 
 ---
 
-## Quick Setup
+## Quick Start
 
-### Option 1: One-Command Setup (Recommended)
-
-```bash
-make setup
-source .venv/bin/activate
-```
-
-### Option 2: Manual Setup
+### 1. Setup & Run Python Backend
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[backend,dev]"
+facevision-api
 ```
 
-*(If you only want runtime dependencies without editable install: `pip install -r requirements.txt`)*
+### 2. Run Web Application
 
----
-
-## CLI Usage
-
-Once `.venv` is activated, you can use `face-detect` (or `python Face_Detector.py`):
-
-### 1. Live Webcam
-Press `q` or `Esc` to quit.
 ```bash
-face-detect
+cd apps/web
+npm install
+npm run dev
 ```
 
-### 2. Single Image
-```bash
-face-detect --image RDJ.png
-```
+Open `http://localhost:5173`.
 
-### 3. Privacy Blur / Pixelation
-```bash
-face-detect --image me.png --blur gaussian --output output/me_blurred.png --no-show
-face-detect --video clip.mp4 --blur pixelate --output output/clip_pixelated.mp4 --no-show
-```
+### 3. Legacy CLI (Preserved)
 
-### 4. Extract Face Crops + Export JSON Metadata
 ```bash
-face-detect --image rdi.jpg --save-crops output/crops --export-json output/rdi.json --no-show
-```
-
-### 5. Batch Process a Directory of Images
-```bash
-face-detect --input-dir . --output output/batch --export-json output/batch.json
-```
-
-### 6. Use Modern YuNet DNN Backend (Optional ONNX Model)
-```bash
-face-detect --image RDJ.png --yunet-model path/to/face_detection_yunet_2023mar.onnx
+face-detect --image RDJ.png --blur gaussian --output output/RDJ_blurred.png --no-show
 ```
 
 ---
 
-## Python API Usage
-
-```python
-from pathlib import Path
-from face_detector import DetectorConfig, FacePipeline
-
-config = DetectorConfig(blur_mode="gaussian", show_hud=True)
-pipeline = FacePipeline(config=config)
-
-result = pipeline.process_image(
-    Path("RDJ.png"),
-    output_path=Path("output/RDJ_blurred.png"),
-    crops_dir=Path("output/crops"),
-    show=False,
-)
-print(result.to_dict())
-```
-
----
-
-## Running Tests
+## Testing & Verification
 
 ```bash
-make test
+# Python backend + legacy CLI tests & type check
+.venv/bin/pytest -v
+.venv/bin/mypy backend/app
+
+# Frontend unit tests & production build
+cd apps/web && npm test && npm run build
 ```
 
 ---
 
-## Contributing & License
+## Documentation
+- [Installation Guide](docs/installation.md)
+- [Development Guide](docs/development.md)
+- [User Guide](docs/user-guide.md)
+- [Security Overview](docs/security/overview.md)
+- [Architecture Audit & Migration Plan](docs/architecture/legacy-audit.md)
+- [Implementation Status](docs/IMPLEMENTATION_STATUS.md)
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 Licensed under the [MIT License](LICENSE).
