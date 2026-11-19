@@ -40,6 +40,11 @@ describe("FaceVision Web App", () => {
     expect(screen.getByText("Video Detection")).toBeInTheDocument();
     expect(screen.getAllByText("Live Webcam").length).toBeGreaterThanOrEqual(1);
     expect(await screen.findByText("5")).toBeInTheDocument();
+
+    // Simple mode hides AI Models until switched to Advanced
+    expect(screen.queryByText("AI Models")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Simple" }));
+    expect(screen.getByText("AI Models")).toBeInTheDocument();
   });
 
   it("invokes onFilesSelected when files are chosen in DropZone", () => {

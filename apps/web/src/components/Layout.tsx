@@ -23,31 +23,35 @@ import { loadLocalPreferences, saveLocalPreferences } from "../lib/storage";
 const NAV_SECTIONS = [
   {
     heading: "Overview",
-    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard }],
+    advancedOnly: false,
+    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard, advancedOnly: false }],
   },
   {
     heading: "Face & Privacy",
+    advancedOnly: false,
     items: [
-      { to: "/images", label: "Image Detection", icon: ImageIcon },
-      { to: "/videos", label: "Video Detection", icon: Film },
-      { to: "/webcam", label: "Live Webcam", icon: Camera },
-      { to: "/batch", label: "Batch Queue", icon: Layers },
+      { to: "/images", label: "Image Detection", icon: ImageIcon, advancedOnly: false },
+      { to: "/videos", label: "Video Detection", icon: Film, advancedOnly: false },
+      { to: "/webcam", label: "Live Webcam", icon: Camera, advancedOnly: false },
+      { to: "/batch", label: "Batch Queue", icon: Layers, advancedOnly: true },
     ],
   },
   {
     heading: "AI & Media Studios",
+    advancedOnly: false,
     items: [
-      { to: "/vision", label: "3D Mesh & AI Vision", icon: ScanSearch },
-      { to: "/media-studio", label: "Edit & Compress", icon: SlidersHorizontal },
+      { to: "/vision", label: "3D Mesh & AI Vision", icon: ScanSearch, advancedOnly: true },
+      { to: "/media-studio", label: "Edit & Compress", icon: SlidersHorizontal, advancedOnly: false },
     ],
   },
   {
     heading: "Management",
+    advancedOnly: false,
     items: [
-      { to: "/reports", label: "Reports & PDF", icon: FileText },
-      { to: "/history", label: "History", icon: History },
-      { to: "/models", label: "AI Models", icon: Cpu },
-      { to: "/settings", label: "Settings", icon: Settings },
+      { to: "/reports", label: "Reports & PDF", icon: FileText, advancedOnly: false },
+      { to: "/history", label: "History", icon: History, advancedOnly: true },
+      { to: "/models", label: "AI Models", icon: Cpu, advancedOnly: true },
+      { to: "/settings", label: "Settings", icon: Settings, advancedOnly: false },
     ],
   },
 ];
@@ -93,30 +97,36 @@ export function Layout() {
         </div>
 
         <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
-          {NAV_SECTIONS.map((section) => (
-            <div key={section.heading} className="space-y-1">
-              <div className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                {section.heading}
+          {NAV_SECTIONS.map((section) => {
+            const visibleItems = section.items.filter(
+              (item) => uiMode === "advanced" || !item.advancedOnly
+            );
+            if (visibleItems.length === 0) return null;
+            return (
+              <div key={section.heading} className="space-y-1">
+                <div className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  {section.heading}
+                </div>
+                {visibleItems.map(({ to, label, icon: Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={to === "/"}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isActive
+                          ? "bg-indigo-600 text-white shadow-sm"
+                          : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      }`
+                    }
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{label}</span>
+                  </NavLink>
+                ))}
               </div>
-              {section.items.map(({ to, label, icon: Icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  end={to === "/"}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isActive
-                        ? "bg-indigo-600 text-white shadow-sm"
-                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`
-                  }
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span>{label}</span>
-                </NavLink>
-              ))}
-            </div>
-          ))}
+            );
+          })}
         </nav>
 
         <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
@@ -154,7 +164,7 @@ export function Layout() {
 
       <main className="flex-1 overflow-y-auto p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
-          <Outlet />
+          <Outlet context={{ uiMode }} />
         </div>
       </main>
     </div>

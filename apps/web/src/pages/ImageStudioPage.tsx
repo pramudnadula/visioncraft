@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Play, Sparkles } from "lucide-react";
 import { DropZone } from "../components/DropZone";
@@ -7,6 +8,8 @@ import { api } from "../lib/api";
 import type { BlurMode, DetectionBox, JobResponse, MediaAsset } from "../types/api";
 
 export function ImageStudioPage() {
+  const outlet = useOutletContext<{ uiMode?: "simple" | "advanced" } | null>();
+  const isAdvanced = outlet?.uiMode === "advanced";
   const { data: models } = useQuery({ queryKey: ["models"], queryFn: api.models });
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: api.getSettings });
 
@@ -134,20 +137,22 @@ export function ImageStudioPage() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
-                Confidence Threshold: {Math.round(confidence * 100)}%
-              </label>
-              <input
-                type="range"
-                min={0.1}
-                max={0.95}
-                step={0.05}
-                value={confidence}
-                onChange={(e) => setConfidence(Number(e.target.value))}
-                className="w-full"
-              />
-            </div>
+            {isAdvanced && (
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
+                  Confidence Threshold: {Math.round(confidence * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min={0.1}
+                  max={0.95}
+                  step={0.05}
+                  value={confidence}
+                  onChange={(e) => setConfidence(Number(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+            )}
 
             <label className="flex items-center gap-2 text-sm">
               <input

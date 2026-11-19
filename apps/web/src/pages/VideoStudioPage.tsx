@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Film, Play } from "lucide-react";
 import { DropZone } from "../components/DropZone";
@@ -7,6 +8,8 @@ import { api } from "../lib/api";
 import type { BlurMode, JobResponse, MediaAsset } from "../types/api";
 
 export function VideoStudioPage() {
+  const outlet = useOutletContext<{ uiMode?: "simple" | "advanced" } | null>();
+  const isAdvanced = outlet?.uiMode === "advanced";
   const { data: models } = useQuery({ queryKey: ["models"], queryFn: api.models });
   const [media, setMedia] = useState<MediaAsset | null>(null);
   const [modelId, setModelId] = useState("haar");
@@ -115,18 +118,20 @@ export function VideoStudioPage() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Target Processing FPS (Optional)</label>
-              <input
-                type="number"
-                min={1}
-                max={60}
-                placeholder="Native FPS"
-                value={targetFps}
-                onChange={(e) => setTargetFps(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
-              />
-            </div>
+            {isAdvanced && (
+              <div>
+                <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Target Processing FPS (Optional)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  placeholder="Native FPS"
+                  value={targetFps}
+                  onChange={(e) => setTargetFps(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+                />
+              </div>
+            )}
 
             <label className="flex items-center gap-2 text-sm">
               <input
