@@ -9,7 +9,7 @@ import cv2
 
 from backend.app.detection.base import Detection
 
-BlurMode = Literal["none", "gaussian", "pixelate", "mask", "mesh"]
+BlurMode = Literal["none", "gaussian", "pixelate", "mask", "mesh", "geometric"]
 
 
 def _clip_roi(frame: cv2.typing.MatLike, detection: Detection) -> tuple[int, int, int, int] | None:
@@ -68,6 +68,67 @@ def blur_face_region(
         for gy in range(0, roi_h, step):
             cv2.line(covered, (0, gy), (roi_w, gy), (25, 25, 25), 1)
         frame[y1:y2, x1:x2] = covered
+    elif mode == "geometric":
+        _draw_geometric_face_mesh(frame, detection, bounds)
+
+
+def _draw_geometric_face_mesh(
+    frame: cv2.typing.MatLike,
+    detection: Detection,
+    bounds: tuple[int, int, int, int],
+) -> None:
+    """Draw geometric facial landmarks and Delaunay triangulation mesh over a face."""
+    x1, y1, x2, y2 = bounds
+    w = x2 - x1
+    h = y2 - y1
+    if w < 16 or h < 16:
+        return
+
+    img_h, img_w = frame.shape[:2]
+    # Base facial geometry control points (normalized to face box)
+    rel_points = [
+        (0.50, 0.05), (0.30, 0.08), (0.70, 0.08),  # forehead
+        (0.12, 0.28), (0.88, 0.28),                # temples
+        (0.24, 0.25), (0.38, 0.24), (0.62, 0.24), (0.76, 0.25),  # eyebrows
+        (0.50, 0.35),                              # nose bridge
+        (0.08, 0.50), (0.92, 0.50),                # cheeks
+        (0.14, 0.72), (0.86, 0.72),                # jaw
+        (0.32, 0.88), (0.50, 0.96), (0.68, 0.88),  # chin
+    ]
+    pts: list[tuple[float, float]] = [
+        (
+            min(float(img_w - 2), max(1.0, x1 + px * w)),
+            min(float(img_h - 2), max(1.0, y1 + py * h)),
+        )
+        for (px, py) in rel_points
+    ]
+
+    if detection.landmarks:
+        for lm in detection.landmarks:
+            lx = min(float(img_w - 2), max(1.0, lm.x))
+            ly = min(float(img_h - 2), max(1.0, lm.y))
+            pts.append((lx, ly))
+    else:
+        # Fallback eye/nose/mouth anchors when backend doesn't emit landmarks
+        for px, py in [(0.33, 0.36), (0.67, 0.36), (0.50, 0.56), (0.36, 0.74), (0.64, 0.74)]:
+            pts.append((x1 + px * w, y1 + py * h))
+
+    subdiv = cv2.Subdiv2D((0, 0, img_w, img_h))
+    for pt in pts:
+        subdiv.insert(pt)
+
+    yellow = (0, 230, 255)
+    for tri in subdiv.getTriangleList():
+        p1 = (int(tri[0]), int(tri[1]))
+        p2 = (int(tri[2]), int(tri[3]))
+        p3 = (int(tri[4]), int(tri[5]))
+        if all(0 <= p[0] < img_w and 0 <= p[1] < img_h for p in (p1, p2, p3)):
+            cv2.line(frame, p1, p2, yellow, 1, cv2.LINE_AA)
+            cv2.line(frame, p2, p3, yellow, 1, cv2.LINE_AA)
+            cv2.line(frame, p3, p1, yellow, 1, cv2.LINE_AA)
+
+    for px, py in pts:
+        cv2.circle(frame, (int(px), int(py)), 2, yellow, -1, cv2.LINE_AA)
 
 
 def apply_privacy_blur(

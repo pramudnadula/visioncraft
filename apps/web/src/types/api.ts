@@ -1,4 +1,4 @@
-export type BlurMode = "none" | "gaussian" | "pixelate" | "mask" | "mesh";
+export type BlurMode = "none" | "gaussian" | "pixelate" | "mask" | "mesh" | "geometric";
 export type ExecutionMode = "local_desktop" | "web_local_agent" | "cloud";
 
 export interface HealthResponse {
@@ -108,6 +108,19 @@ export interface CloudTestResponse {
   reachable: boolean;
   status_code: number | null;
   message: string;
+}
+
+export interface ModelSearchResult {
+  id: string;
+  downloads: number;
+  likes: number;
+  pipeline_tag: string | null;
+  url: string;
+}
+
+export interface CustomModelFile {
+  filename: string;
+  size_bytes: number;
 }
 
 export interface DashboardStats {
