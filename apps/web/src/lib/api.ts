@@ -8,6 +8,7 @@ import type {
   HealthResponse,
   ImageMetadataInfo,
   ImageOperationResponse,
+  ImagePreviewResponse,
   JobCreateRequest,
   JobResponse,
   MediaAsset,
@@ -154,6 +155,32 @@ export const api = {
     max_height?: number | null;
   }) =>
     request<ImageOperationResponse>("/media/image/compress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  removeBackground: (payload: {
+    media_id: string;
+    model_type?: "universal" | "portrait";
+    background_mode?: "transparent" | "color" | "blur";
+    background_color?: string;
+  }) =>
+    request<ImageOperationResponse>("/media/image/remove-background", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  previewImage: (payload: {
+    media_id: string;
+    mode: "convert" | "compress" | "remove_bg";
+    target_format?: string;
+    quality?: number;
+    target_kb?: number | null;
+    background_color?: string;
+    model_type?: "universal" | "portrait";
+    background_mode?: "transparent" | "color" | "blur";
+  }) =>
+    request<ImagePreviewResponse>("/media/image/preview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

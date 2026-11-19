@@ -1,4 +1,15 @@
 export type BlurMode = "none" | "gaussian" | "pixelate" | "mask" | "mesh" | "geometric" | "mesh_3d";
+
+export interface ImagePreviewResponse {
+  preview_data_url: string;
+  output_format: string;
+  width: number;
+  height: number;
+  original_size_bytes: number;
+  estimated_size_bytes: number;
+  reduction_percent: number;
+  target_achieved: boolean;
+}
 export type EmotionMode = "off" | "hybrid" | "ferplus" | "blendshapes";
 
 export interface FaceEmotionFace {

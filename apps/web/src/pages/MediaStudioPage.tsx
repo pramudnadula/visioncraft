@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { Crop, Download, Maximize2, Minimize2, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Crop, Download, Maximize2, Minimize2, RefreshCw, Scissors } from "lucide-react";
 import { DropZone } from "../components/DropZone";
 import { ImageCropModal } from "../components/ImageCropModal";
 import { api } from "../lib/api";
-import type { ImageMetadataInfo, ImageOperationResponse, MediaAsset } from "../types/api";
+import type { ImageMetadataInfo, ImageOperationResponse, ImagePreviewResponse, MediaAsset } from "../types/api";
 
-type ToolTab = "crop" | "resize" | "convert" | "compress";
+type ToolTab = "crop" | "resize" | "convert" | "compress" | "remove_bg";
 
 export function MediaStudioPage() {
   const [media, setMedia] = useState<MediaAsset | null>(null);
@@ -31,6 +31,60 @@ export function MediaStudioPage() {
   const [targetKb, setTargetKb] = useState(200);
   const [compQuality, setCompQuality] = useState(75);
   const [compFormat, setCompFormat] = useState("jpg");
+
+  // Background removal & live preview state
+  const [bgModelType, setBgModelType] = useState<"universal" | "portrait">("universal");
+  const [bgOutputMode, setBgOutputMode] = useState<"transparent" | "color" | "blur">("transparent");
+  const [bgFillColor, setBgFillColor] = useState("#ffffff");
+  const [livePreviewEnabled, setLivePreviewEnabled] = useState(true);
+  const [preview, setPreview] = useState<ImagePreviewResponse | null>(null);
+  const [previewBusy, setPreviewBusy] = useState(false);
+
+  useEffect(() => {
+    if (!media || !livePreviewEnabled || (tab !== "convert" && tab !== "compress" && tab !== "remove_bg")) {
+      setPreview(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setPreviewBusy(true);
+      try {
+        const res = await api.previewImage({
+          media_id: media.id,
+          mode: tab,
+          target_format: tab === "convert" ? targetFormat : compFormat,
+          quality: tab === "convert" ? convQuality : compQuality,
+          target_kb: tab === "compress" && compressMode === "target" ? targetKb : null,
+          background_color: tab === "remove_bg" ? bgFillColor : bgColor,
+          model_type: bgModelType,
+          background_mode: bgOutputMode,
+        });
+        if (!cancelled) setPreview(res);
+      } catch {
+        if (!cancelled) setPreview(null);
+      } finally {
+        if (!cancelled) setPreviewBusy(false);
+      }
+    }, 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    media,
+    tab,
+    livePreviewEnabled,
+    targetFormat,
+    convQuality,
+    bgColor,
+    compressMode,
+    targetKb,
+    compQuality,
+    compFormat,
+    bgModelType,
+    bgOutputMode,
+    bgFillColor,
+  ]);
 
   const handleUpload = async (files: File[]) => {
     const file = files[0];
@@ -110,6 +164,26 @@ export function MediaStudioPage() {
     }
   };
 
+  const runRemoveBackground = async () => {
+    if (!media) return;
+    setError(null);
+    setBusy(true);
+    try {
+      setResult(
+        await api.removeBackground({
+          media_id: media.id,
+          model_type: bgModelType,
+          background_mode: bgOutputMode,
+          background_color: bgFillColor,
+        })
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Background removal failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const formatBytes = (bytes: number) =>
     bytes >= 1024 * 1024
       ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
@@ -127,8 +201,8 @@ export function MediaStudioPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="space-y-4">
           <DropZone
-            accept="image/png,image/jpeg,image/webp,image/bmp,image/gif"
-            label={busy ? "Processing..." : "Drop an image to edit, convert, or compress"}
+            accept="image/*,.heic,.heif,.tiff,.tif,.ico"
+            label={busy ? "Processing..." : "Drop an image to edit, convert, compress, or remove background"}
             onFilesSelected={handleUpload}
             disabled={busy}
           />
@@ -154,6 +228,7 @@ export function MediaStudioPage() {
                   { id: "resize", label: "Resize", icon: Maximize2 },
                   { id: "convert", label: "Convert", icon: RefreshCw },
                   { id: "compress", label: "Compress", icon: Minimize2 },
+                  { id: "remove_bg", label: "Remove BG", icon: Scissors },
                 ] as const
               ).map(({ id, label, icon: Icon }) => (
                 <button
@@ -238,7 +313,7 @@ export function MediaStudioPage() {
                     onChange={(e) => setTargetFormat(e.target.value)}
                     className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-2.5 py-1.5"
                   >
-                    {["webp", "jpeg", "png", "bmp", "tiff", "gif"].map((f) => (
+                    {["webp", "jpeg", "png", "heic", "heif", "bmp", "tiff", "gif", "ico"].map((f) => (
                       <option key={f} value={f} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
                         {f.toUpperCase()}
                       </option>
@@ -305,9 +380,11 @@ export function MediaStudioPage() {
 
                 {compressMode === "target" ? (
                   <div>
-                    <label className="block text-slate-600 dark:text-slate-400 mb-1">Target Size (KB)</label>
+                    <label className="block text-slate-600 dark:text-slate-400 mb-1">
+                      Target Size (KB) — Preset or Custom
+                    </label>
                     <div className="flex flex-wrap gap-1.5 mb-2">
-                      {[50, 100, 200, 500, 1024].map((kb) => (
+                      {[20, 50, 100, 200, 500, 1024, 2048, 5120].map((kb) => (
                         <button
                           key={kb}
                           type="button"
@@ -316,18 +393,29 @@ export function MediaStudioPage() {
                             targetKb === kb ? "border-indigo-500 text-indigo-400" : "border-slate-700"
                           }`}
                         >
-                          {kb >= 1024 ? "1 MB" : `${kb} KB`}
+                          {kb >= 1024 ? `${kb / 1024} MB` : `${kb} KB`}
                         </button>
                       ))}
                     </div>
-                    <input
-                      type="number"
-                      min={10}
-                      max={50000}
-                      value={targetKb}
-                      onChange={(e) => setTargetKb(Number(e.target.value))}
-                      className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-2.5 py-1.5"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min={10}
+                        max={5120}
+                        step={10}
+                        value={Math.min(5120, targetKb)}
+                        onChange={(e) => setTargetKb(Number(e.target.value))}
+                        className="flex-1"
+                      />
+                      <input
+                        type="number"
+                        min={5}
+                        max={50000}
+                        value={targetKb}
+                        onChange={(e) => setTargetKb(Math.max(5, Number(e.target.value)))}
+                        className="w-24 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-2.5 py-1.5"
+                      />
+                    </div>
                   </div>
                 ) : (
                   <div>
@@ -355,6 +443,8 @@ export function MediaStudioPage() {
                     <option value="jpg" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">JPEG</option>
                     <option value="webp" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">WEBP</option>
                     <option value="png" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">PNG</option>
+                    <option value="heic" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">HEIC</option>
+                    <option value="tiff" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">TIFF</option>
                   </select>
                 </div>
 
@@ -365,6 +455,68 @@ export function MediaStudioPage() {
                   className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white font-semibold"
                 >
                   Compress Image
+                </button>
+              </div>
+            )}
+
+            {tab === "remove_bg" && (
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-400 mb-1">AI Segmentation Model</label>
+                  <select
+                    value={bgModelType}
+                    onChange={(e) => setBgModelType(e.target.value as "universal" | "portrait")}
+                    className="w-full rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-2.5 py-1.5"
+                  >
+                    <option value="universal" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                      Universal Object (U2-Net-P ONNX)
+                    </option>
+                    <option value="portrait" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                      Portrait / Person (MediaPipe)
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-400 mb-1">Background Output</label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(
+                      [
+                        { id: "transparent", label: "Transparent" },
+                        { id: "color", label: "Solid Color" },
+                        { id: "blur", label: "Blur BG" },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setBgOutputMode(opt.id)}
+                        className={`py-1.5 rounded border ${
+                          bgOutputMode === opt.id ? "border-indigo-500 text-indigo-400" : "border-slate-700"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {bgOutputMode === "color" && (
+                  <div>
+                    <label className="block text-slate-600 dark:text-slate-400 mb-1">Replacement Color</label>
+                    <input
+                      type="color"
+                      value={bgFillColor}
+                      onChange={(e) => setBgFillColor(e.target.value)}
+                      className="h-8 w-16 rounded border border-slate-300 dark:border-slate-700"
+                    />
+                  </div>
+                )}
+                <button
+                  type="button"
+                  disabled={!media || busy}
+                  onClick={runRemoveBackground}
+                  className="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white font-semibold"
+                >
+                  Remove Background
                 </button>
               </div>
             )}
@@ -380,11 +532,47 @@ export function MediaStudioPage() {
             </div>
           ) : (
             <>
-              <img
-                src={result ? result.download_url : api.mediaFileUrl(media.id)}
-                alt={media.original_filename}
-                className="max-h-[460px] mx-auto rounded-lg object-contain"
-              />
+              {(tab === "convert" || tab === "compress" || tab === "remove_bg") && (
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <label className="inline-flex items-center gap-2 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={livePreviewEnabled}
+                      onChange={(e) => setLivePreviewEnabled(e.target.checked)}
+                    />
+                    Live Preview {previewBusy && <span className="text-indigo-400">(updating…)</span>}
+                  </label>
+                  {preview && (
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Est: <strong>{preview.output_format}</strong> · {formatBytes(preview.estimated_size_bytes)} (
+                      <span className={preview.reduction_percent >= 0 ? "text-emerald-500" : "text-amber-500"}>
+                        {preview.reduction_percent >= 0 ? `-${preview.reduction_percent}%` : `+${Math.abs(preview.reduction_percent)}%`}
+                      </span>
+                      )
+                    </span>
+                  )}
+                </div>
+              )}
+              <div
+                className="rounded-lg p-2 flex items-center justify-center"
+                style={{
+                  backgroundImage:
+                    "repeating-conic-gradient(rgba(148,163,184,0.16) 0% 25%, transparent 0% 50%)",
+                  backgroundSize: "16px 16px",
+                }}
+              >
+                <img
+                  src={
+                    livePreviewEnabled && preview
+                      ? preview.preview_data_url
+                      : result
+                        ? result.download_url
+                        : api.mediaFileUrl(media.id)
+                  }
+                  alt={media.original_filename}
+                  className="max-h-[460px] mx-auto rounded-lg object-contain"
+                />
+              </div>
               {result && (
                 <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
                   <div className="space-y-1">

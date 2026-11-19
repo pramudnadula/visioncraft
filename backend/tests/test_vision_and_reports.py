@@ -230,3 +230,34 @@ def test_face_emotion_ferplus_and_hybrid() -> None:
         "contempt",
     }
     draw_emotion_overlays(frame, [det], res)
+
+
+def test_heic_convert_and_u2net_background_removal(tmp_path: Path) -> None:
+    from PIL import Image
+
+    from backend.app.media.image.tools import convert_image
+    from backend.app.vision.objects.background_remove import (
+        remove_background_to_file,
+        resolve_u2net_path,
+    )
+
+    src = tmp_path / "sample.png"
+    Image.new("RGB", (96, 96), (40, 120, 200)).save(src)
+
+    heic_out = tmp_path / "out.heic"
+    conv_res = convert_image(src, heic_out, target_format="heic", quality=80)
+    assert conv_res.output_format == "HEIF"
+    assert heic_out.is_file() and heic_out.stat().st_size > 0
+
+    models_dir = Path("models")
+    if resolve_u2net_path(models_dir) is not None:
+        bg_out = tmp_path / "nobg.png"
+        bg_res = remove_background_to_file(
+            src,
+            bg_out,
+            models_dir=models_dir,
+            model_type="universal",
+            background_mode="transparent",
+        )
+        assert bg_res.output_format == "PNG"
+        assert bg_out.is_file() and bg_out.stat().st_size > 0

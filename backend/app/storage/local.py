@@ -19,6 +19,12 @@ IMAGE_SIGNATURES: dict[str, tuple[str, ...]] = {
     ".png": ("image/png",),
     ".bmp": ("image/bmp",),
     ".webp": ("image/webp",),
+    ".gif": ("image/gif",),
+    ".tiff": ("image/tiff",),
+    ".tif": ("image/tiff",),
+    ".ico": ("image/x-icon",),
+    ".heic": ("image/heic",),
+    ".heif": ("image/heif",),
 }
 
 VIDEO_SIGNATURES: dict[str, tuple[str, ...]] = {
@@ -39,6 +45,18 @@ def _detect_image_mime(header: bytes) -> str | None:
         return "image/bmp"
     if header[:4] == b"RIFF" and len(header) >= 12 and header[8:12] == b"WEBP":
         return "image/webp"
+    if header[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if header[:4] in (b"II*\x00", b"MM\x00*"):
+        return "image/tiff"
+    if header[:4] == b"\x00\x00\x01\x00":
+        return "image/x-icon"
+    if len(header) >= 12 and header[4:8] == b"ftyp":
+        brand = header[8:12]
+        if brand in (b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm", b"hevs"):
+            return "image/heic"
+        if brand in (b"mif1", b"msf1"):
+            return "image/heif"
     return None
 
 

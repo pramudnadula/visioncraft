@@ -13,6 +13,7 @@ dependencies = [
     "numpy>=2.0,<3",
     "opencv-python>=4.10,<5",
     "pillow>=10.4,<12",
+    "pillow-heif>=0.18.0",
     "fpdf2>=2.7,<3",
 ]
 

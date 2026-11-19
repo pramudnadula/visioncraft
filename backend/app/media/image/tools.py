@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import importlib.util
 import io
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,6 +13,11 @@ from PIL import Image, ImageColor, ImageOps
 
 from backend.app.core.exceptions import MediaValidationError
 
+if importlib.util.find_spec("pillow_heif") is not None:
+    import pillow_heif  # type: ignore[import-not-found]
+
+    pillow_heif.register_heif_opener()
+
 SUPPORTED_FORMATS: dict[str, str] = {
     "jpeg": "JPEG",
     "jpg": "JPEG",
@@ -18,7 +25,11 @@ SUPPORTED_FORMATS: dict[str, str] = {
     "webp": "WEBP",
     "bmp": "BMP",
     "tiff": "TIFF",
+    "tif": "TIFF",
     "gif": "GIF",
+    "ico": "ICO",
+    "heic": "HEIF",
+    "heif": "HEIF",
 }
 
 
@@ -248,12 +259,14 @@ def convert_image(
     img = _open_image(input_path)
     if width and height:
         img = img.resize((max(1, width), max(1, height)), Image.Resampling.LANCZOS)
+    if fmt == "ICO" and (img.width > 256 or img.height > 256):
+        img.thumbnail((256, 256), Image.Resampling.LANCZOS)
 
     save_img = _flatten_alpha(img, background_color) if fmt in ("JPEG", "BMP") else img
     save_kwargs: dict[str, Any] = {"format": fmt}
-    if fmt in ("JPEG", "WEBP"):
+    if fmt in ("JPEG", "WEBP", "HEIF"):
         save_kwargs["quality"] = max(1, min(100, quality))
-    if preserve_metadata and "exif" in raw_img.info and fmt in ("JPEG", "WEBP", "TIFF"):
+    if preserve_metadata and "exif" in raw_img.info and fmt in ("JPEG", "WEBP", "TIFF", "HEIF"):
         save_kwargs["exif"] = raw_img.info["exif"]
 
     save_img.save(output_path, **save_kwargs)
@@ -276,14 +289,36 @@ def convert_image(
     )
 
 
-def _encode_to_bytes(img: Image.Image, fmt: str, quality: int) -> bytes:
+def _encode_to_bytes(img: Image.Image, fmt: str, quality: int, background_color: str = "#ffffff") -> bytes:
     buf = io.BytesIO()
-    save_img = _flatten_alpha(img, "#ffffff") if fmt in ("JPEG", "BMP") else img
-    kwargs: dict[str, Any] = {"format": fmt, "optimize": True}
-    if fmt in ("JPEG", "WEBP"):
+    working = img
+    if fmt == "ICO" and (working.width > 256 or working.height > 256):
+        working = working.copy()
+        working.thumbnail((256, 256), Image.Resampling.LANCZOS)
+    save_img = _flatten_alpha(working, background_color) if fmt in ("JPEG", "BMP") else working
+    kwargs: dict[str, Any] = {"format": fmt}
+    if fmt in ("JPEG", "PNG", "WEBP"):
+        kwargs["optimize"] = True
+    if fmt in ("JPEG", "WEBP", "HEIF"):
         kwargs["quality"] = quality
     save_img.save(buf, **kwargs)
     return buf.getvalue()
+
+
+def encode_preview_data_url(img: Image.Image, fmt: str, encoded_bytes: bytes) -> str:
+    """Return a browser-renderable data URL for live preview (using PNG/JPEG fallback for HEIF/TIFF/BMP)."""
+    if fmt in ("JPEG", "PNG", "WEBP", "GIF"):
+        mime = f"image/{fmt.lower()}"
+        return f"data:{mime};base64,{base64.b64encode(encoded_bytes).decode('ascii')}"
+    # Re-open or render browser-safe preview for formats browsers may not decode natively (HEIC/TIFF/BMP/ICO)
+    preview_img = Image.open(io.BytesIO(encoded_bytes))
+    preview_img.load()
+    preview_img.thumbnail((960, 960), Image.Resampling.LANCZOS)
+    pbuf = io.BytesIO()
+    preview_fmt = "PNG" if preview_img.mode in ("RGBA", "LA", "PA") else "JPEG"
+    preview_img.save(pbuf, format=preview_fmt, quality=88)
+    mime = f"image/{preview_fmt.lower()}"
+    return f"data:{mime};base64,{base64.b64encode(pbuf.getvalue()).decode('ascii')}"
 
 
 def compress_image(
