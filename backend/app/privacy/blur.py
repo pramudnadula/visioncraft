@@ -9,7 +9,7 @@ import cv2
 
 from backend.app.detection.base import Detection
 
-BlurMode = Literal["none", "gaussian", "pixelate", "mask", "mesh", "geometric"]
+BlurMode = Literal["none", "gaussian", "pixelate", "mask", "mesh", "geometric", "mesh_3d"]
 
 
 def _clip_roi(frame: cv2.typing.MatLike, detection: Detection) -> tuple[int, int, int, int] | None:
@@ -70,6 +70,10 @@ def blur_face_region(
         frame[y1:y2, x1:x2] = covered
     elif mode == "geometric":
         _draw_geometric_face_mesh(frame, detection, bounds)
+    elif mode == "mesh_3d":
+        from backend.app.vision.faces.mesh_3d import draw_3d_face_mesh
+
+        draw_3d_face_mesh(frame, detection)
 
 
 def _draw_geometric_face_mesh(

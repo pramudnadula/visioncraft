@@ -121,3 +121,18 @@ def test_vision_capabilities_and_reports_api(tmp_path: Path) -> None:
         dl = client.get(rep.json()["download_url"])
         assert dl.status_code == 200
         assert dl.content[:4] == b"%PDF"
+
+
+def test_3d_face_mesh_and_head_pose() -> None:
+    from backend.app.detection.base import Detection
+    from backend.app.vision.faces.mesh_3d import analyze_faces_3d, draw_3d_face_mesh
+
+    frame = np.zeros((320, 320, 3), dtype=np.uint8)
+    det = Detection(x=80, y=60, width=160, height=200, confidence=0.95)
+    pose = draw_3d_face_mesh(frame, det)
+    assert isinstance(pose.yaw_deg, float)
+    assert frame.sum() > 0
+
+    res = analyze_faces_3d(frame, [det])
+    assert res["face_count"] == 1
+    assert len(res["faces"][0]["landmarks_3d"]) == 6

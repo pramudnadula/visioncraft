@@ -12,6 +12,7 @@ from backend.app.database.models import MediaAsset
 from backend.app.detection.base import DetectorConfig
 from backend.app.vision.faces.expressions import FacialExpressionAnalyzer
 from backend.app.vision.faces.mask_detection import FaceMaskClassifier
+from backend.app.vision.faces.mesh_3d import analyze_faces_3d
 from backend.app.vision.hands.detection import HandLandmarkDetector
 from backend.app.vision.objects.detection import VEHICLE_CLASSES, YOLOv8ONNXObjectDetector
 from backend.app.vision.objects.tracking import ObjectTracker
@@ -46,6 +47,7 @@ def get_vision_capabilities(container: AppStateContainer = Depends(get_container
     mask_clf = FaceMaskClassifier(models_dir=models_dir)
     return {
         "face_detection": True,
+        "face_mesh_3d_ready": True,
         "face_mask_ready": mask_clf.is_available(),
         "facial_analysis_ready": FacialExpressionAnalyzer.is_available(),
         "hand_landmarks_ready": HandLandmarkDetector.is_available(),
@@ -134,6 +136,24 @@ def detect_pose_landmarks(
 ) -> dict[str, object]:
     frame = _load_media_frame(container, payload.media_id)
     return PoseLandmarkDetector().detect(frame)
+
+
+@router.post("/faces/mesh-3d")
+def analyze_3d_face_mesh(
+    payload: ObjectDetectRequest,
+    container: AppStateContainer = Depends(get_container),
+) -> dict[str, object]:
+    frame = _load_media_frame(container, payload.media_id)
+    face_det = container.registry.create_detector(
+        DetectorConfig(model_id="yunet", models_dir=container.settings.resolved_models_dir)
+        if (container.settings.resolved_models_dir / "face_detection_yunet_2023mar.onnx").is_file()
+        else DetectorConfig(model_id="haar", models_dir=container.settings.resolved_models_dir)
+    )
+    try:
+        faces = face_det.detect(frame)
+        return analyze_faces_3d(frame, faces)
+    finally:
+        face_det.release()
 
 
 @router.post("/objects/detect")
