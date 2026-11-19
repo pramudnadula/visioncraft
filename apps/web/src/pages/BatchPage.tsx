@@ -81,10 +81,10 @@ export function BatchPage() {
         <select
           value={modelId}
           onChange={(e) => setModelId(e.target.value)}
-          className="rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
         >
           {models?.map((m) => (
-            <option key={m.id} value={m.id} disabled={!m.available} className="bg-slate-900">
+            <option key={m.id} value={m.id} disabled={!m.available} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
               {m.name}
             </option>
           ))}
@@ -93,11 +93,11 @@ export function BatchPage() {
         <select
           value={blurMode}
           onChange={(e) => setBlurMode(e.target.value as BlurMode)}
-          className="rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
         >
-          <option value="none" className="bg-slate-900">No Blur</option>
-          <option value="gaussian" className="bg-slate-900">Gaussian Blur</option>
-          <option value="pixelate" className="bg-slate-900">Pixelate</option>
+          <option value="none" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">No Blur</option>
+          <option value="gaussian" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Gaussian Blur</option>
+          <option value="pixelate" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Pixelate</option>
         </select>
 
         <button
@@ -113,7 +113,7 @@ export function BatchPage() {
           <button
             type="button"
             onClick={() => setAssets([])}
-            className="ml-auto px-3 py-2 rounded-lg border border-slate-700 text-xs text-slate-400 hover:text-rose-400 inline-flex items-center gap-1"
+            className="ml-auto px-3 py-2 rounded-lg border border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:text-rose-400 inline-flex items-center gap-1"
           >
             <Trash2 className="h-3.5 w-3.5" /> Clear Queue
           </button>
@@ -128,7 +128,7 @@ export function BatchPage() {
           <h3 className="text-sm font-semibold mb-3">Queued Files ({assets.length})</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 text-xs">
             {assets.map((a) => (
-              <div key={a.id} className="p-2.5 rounded-lg border border-slate-800 flex items-center justify-between">
+              <div key={a.id} className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <span className="truncate">{a.original_filename}</span>
                 {a.duplicate_of && <span className="text-amber-400 ml-2">dup</span>}
               </div>

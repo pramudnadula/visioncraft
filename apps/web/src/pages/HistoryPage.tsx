@@ -37,11 +37,11 @@ export function HistoryPage() {
           onChange={(e) => setStatusFilter(e.target.value)}
           className="rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
         >
-          <option value="" className="bg-slate-900">All Statuses</option>
-          <option value="COMPLETED" className="bg-slate-900">Completed</option>
-          <option value="PROCESSING" className="bg-slate-900">Processing</option>
-          <option value="FAILED" className="bg-slate-900">Failed</option>
-          <option value="CANCELLED" className="bg-slate-900">Cancelled</option>
+          <option value="" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">All Statuses</option>
+          <option value="COMPLETED" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Completed</option>
+          <option value="PROCESSING" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Processing</option>
+          <option value="FAILED" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Failed</option>
+          <option value="CANCELLED" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Cancelled</option>
         </select>
       </div>
 
@@ -53,7 +53,7 @@ export function HistoryPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-left text-xs text-slate-400">
+              <thead className="bg-slate-50 dark:bg-slate-800/60 text-left text-xs text-slate-600 dark:text-slate-400">
                 <tr>
                   <th className="p-3">Job ID</th>
                   <th className="p-3">Type</th>
@@ -70,7 +70,7 @@ export function HistoryPage() {
                     <td className="p-3 capitalize">{job.job_type}</td>
                     <td className="p-3">{job.model_id}</td>
                     <td className="p-3">
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-200">
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
                         {job.status}
                       </span>
                     </td>
@@ -84,7 +84,7 @@ export function HistoryPage() {
                               job.job_type === "batch" ? "batch_report.json" : "report.json"
                             )}
                             download
-                            className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800"
+                            className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
                             title="Download JSON report"
                           >
                             <Download className="h-3.5 w-3.5" />
@@ -94,7 +94,7 @@ export function HistoryPage() {
                           <button
                             type="button"
                             onClick={() => handleRetry(job.id)}
-                            className="p-1.5 rounded-lg border border-slate-700 hover:bg-slate-800"
+                            className="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
                             title="Retry job"
                           >
                             <RotateCcw className="h-3.5 w-3.5" />

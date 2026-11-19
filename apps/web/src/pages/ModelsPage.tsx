@@ -28,7 +28,7 @@ export function ModelsPage() {
                   <Cpu className="h-5 w-5 text-indigo-400" />
                   <div>
                     <div className="font-semibold">{m.name}</div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
                       {m.id} · v{m.version} · {m.license}
                     </div>
                   </div>
@@ -38,22 +38,22 @@ export function ModelsPage() {
                     <CheckCircle2 className="h-3.5 w-3.5" /> Ready
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                  <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
                     <XCircle className="h-3.5 w-3.5" /> Unavailable
                   </span>
                 )}
               </div>
 
-              <p className="text-xs text-slate-400">{m.description}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400">{m.description}</p>
 
               <div className="flex flex-wrap gap-2 text-[11px]">
-                <span className="px-2 py-0.5 rounded bg-slate-800">
+                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                   Confidence: {m.supports_confidence ? "Yes" : "No"}
                 </span>
-                <span className="px-2 py-0.5 rounded bg-slate-800">
+                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                   Landmarks: {m.supports_landmarks ? "Yes" : "No"}
                 </span>
-                <span className="px-2 py-0.5 rounded bg-slate-800">
+                <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                   GPU: {m.supports_gpu ? (m.gpu_active ? "Active" : "Supported") : "CPU Only"}
                 </span>
               </div>

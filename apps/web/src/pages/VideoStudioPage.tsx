@@ -84,14 +84,14 @@ export function VideoStudioPage() {
 
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Detection Model</label>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Detection Model</label>
               <select
                 value={modelId}
                 onChange={(e) => setModelId(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
               >
                 {models?.map((m) => (
-                  <option key={m.id} value={m.id} disabled={!m.available} className="bg-slate-900">
+                  <option key={m.id} value={m.id} disabled={!m.available} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
                     {m.name} {m.available ? "" : "(Unavailable)"}
                   </option>
                 ))}
@@ -99,20 +99,20 @@ export function VideoStudioPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Privacy Blur</label>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Privacy Blur</label>
               <select
                 value={blurMode}
                 onChange={(e) => setBlurMode(e.target.value as BlurMode)}
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
               >
-                <option value="none" className="bg-slate-900">None (Boxes Only)</option>
-                <option value="gaussian" className="bg-slate-900">Gaussian Blur</option>
-                <option value="pixelate" className="bg-slate-900">Pixelate</option>
+                <option value="none" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">None (Boxes Only)</option>
+                <option value="gaussian" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Gaussian Blur</option>
+                <option value="pixelate" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Pixelate</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Target Processing FPS (Optional)</label>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Target Processing FPS (Optional)</label>
               <input
                 type="number"
                 min={1}
@@ -177,7 +177,7 @@ export function VideoStudioPage() {
             )}
 
             {job?.status === "COMPLETED" && manifest && (
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-800 text-xs">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-800 text-xs">
                 <div className="flex flex-wrap gap-4">
                   <span>Frames: <strong>{manifest.frames_processed}</strong></span>
                   <span>Detections: <strong>{manifest.total_detections}</strong></span>
@@ -188,21 +188,21 @@ export function VideoStudioPage() {
                   <a
                     href={api.artifactUrl(job.id, "processed.mp4")}
                     download
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 inline-flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1"
                   >
                     <Download className="h-3.5 w-3.5" /> MP4
                   </a>
                   <a
                     href={api.artifactUrl(job.id, "report.json")}
                     download
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 inline-flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1"
                   >
                     <Download className="h-3.5 w-3.5" /> Timeline JSON
                   </a>
                   <a
                     href={api.artifactUrl(job.id, "summary.csv")}
                     download
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 inline-flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1"
                   >
                     <Download className="h-3.5 w-3.5" /> CSV
                   </a>

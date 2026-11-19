@@ -101,14 +101,14 @@ export function ImageStudioPage() {
 
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Detection Model</label>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Detection Model</label>
               <select
                 value={modelId}
                 onChange={(e) => setModelId(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
               >
                 {models?.map((m) => (
-                  <option key={m.id} value={m.id} disabled={!m.available} className="bg-slate-900">
+                  <option key={m.id} value={m.id} disabled={!m.available} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
                     {m.name} {m.available ? "" : "(Unavailable)"}
                   </option>
                 ))}
@@ -116,20 +116,20 @@ export function ImageStudioPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Privacy Blur</label>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Privacy Blur</label>
               <select
                 value={blurMode}
                 onChange={(e) => setBlurMode(e.target.value as BlurMode)}
                 className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
               >
-                <option value="none" className="bg-slate-900">None (Boxes Only)</option>
-                <option value="gaussian" className="bg-slate-900">Gaussian Blur</option>
-                <option value="pixelate" className="bg-slate-900">Pixelate</option>
+                <option value="none" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">None (Boxes Only)</option>
+                <option value="gaussian" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Gaussian Blur</option>
+                <option value="pixelate" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Pixelate</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
                 Confidence Threshold: {Math.round(confidence * 100)}%
               </label>
               <input
@@ -181,7 +181,7 @@ export function ImageStudioPage() {
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize ${
                       viewMode === mode
                         ? "bg-indigo-600 text-white"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                        : "bg-slate-100 dark:bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                     }`}
                   >
                     {mode}
@@ -194,21 +194,21 @@ export function ImageStudioPage() {
                   <a
                     href={api.artifactUrl(job.id, "annotated.png")}
                     download
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 inline-flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1"
                   >
                     <Download className="h-3.5 w-3.5" /> PNG
                   </a>
                   <a
                     href={api.artifactUrl(job.id, "report.json")}
                     download
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 inline-flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1"
                   >
                     <Download className="h-3.5 w-3.5" /> JSON
                   </a>
                   <a
                     href={api.artifactUrl(job.id, "summary.csv")}
                     download
-                    className="px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 inline-flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1"
                   >
                     <Download className="h-3.5 w-3.5" /> CSV
                   </a>
@@ -242,7 +242,7 @@ export function ImageStudioPage() {
                 <h3 className="text-sm font-semibold">
                   Detected Faces ({manifest.detections.length}) · {manifest.duration_ms} ms
                 </h3>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-slate-600 dark:text-slate-400">
                   Toggle faces for selective blur &amp; re-run
                 </span>
               </div>
@@ -253,7 +253,7 @@ export function ImageStudioPage() {
                   return (
                     <label
                       key={idx}
-                      className="flex items-center justify-between p-2.5 rounded-lg border border-slate-800 text-xs"
+                      className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-xs"
                     >
                       <div className="flex items-center gap-2">
                         <input
@@ -263,7 +263,7 @@ export function ImageStudioPage() {
                         />
                         <span>Face #{idx + 1}</span>
                       </div>
-                      <span className="font-mono text-slate-400">
+                      <span className="font-mono text-slate-600 dark:text-slate-400">
                         {det.width}×{det.height}
                         {det.confidence !== null ? ` · ${Math.round(det.confidence * 100)}%` : ""}
                       </span>

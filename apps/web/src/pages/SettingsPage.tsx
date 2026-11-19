@@ -57,14 +57,14 @@ export function SettingsPage() {
         className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-5"
       >
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1">Default Model</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Default Model</label>
           <select
             value={defaultModelId}
             onChange={(e) => setDefaultModelId(e.target.value)}
-            className="w-full rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
           >
             {models?.map((m) => (
-              <option key={m.id} value={m.id} disabled={!m.available} className="bg-slate-900">
+              <option key={m.id} value={m.id} disabled={!m.available} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
                 {m.name}
               </option>
             ))}
@@ -72,20 +72,20 @@ export function SettingsPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1">Default Privacy Blur</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Default Privacy Blur</label>
           <select
             value={defaultBlurMode}
             onChange={(e) => setDefaultBlurMode(e.target.value as BlurMode)}
-            className="w-full rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
           >
-            <option value="none" className="bg-slate-900">None</option>
-            <option value="gaussian" className="bg-slate-900">Gaussian Blur</option>
-            <option value="pixelate" className="bg-slate-900">Pixelate</option>
+            <option value="none" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">None</option>
+            <option value="gaussian" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Gaussian Blur</option>
+            <option value="pixelate" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Pixelate</option>
           </select>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1">
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
             Default Confidence Threshold ({Math.round(confidence * 100)}%)
           </label>
           <input
@@ -100,7 +100,7 @@ export function SettingsPage() {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1">
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
             Media Retention (Days)
           </label>
           <input
@@ -109,12 +109,12 @@ export function SettingsPage() {
             max={3650}
             value={retentionDays}
             onChange={(e) => setRetentionDays(Number(e.target.value))}
-            className="w-full rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-400 mb-1">
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">
             Local / Cloud API Token (Optional)
           </label>
           <input
@@ -122,11 +122,11 @@ export function SettingsPage() {
             value={apiToken}
             onChange={(e) => setApiToken(e.target.value)}
             placeholder="Leave empty if local auth is disabled"
-            className="w-full rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
           />
         </div>
 
-        <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-800">
+        <label className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
           <input
             type="checkbox"
             checked={allowCloud}
@@ -135,7 +135,7 @@ export function SettingsPage() {
           />
           <div className="text-xs">
             <div className="font-semibold text-sm">Allow Optional Cloud Processing</div>
-            <p className="text-slate-400 mt-0.5">
+            <p className="text-slate-600 dark:text-slate-400 mt-0.5">
               Local processing is always default. Enabling this allows you to explicitly opt in to
               transferring media to a configured remote worker.
             </p>

@@ -125,11 +125,11 @@ export function WebcamPage() {
           value={selectedDeviceId}
           onChange={(e) => setSelectedDeviceId(e.target.value)}
           disabled={running}
-          className="rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
         >
           {devices.length === 0 && <option value="">Default Camera</option>}
           {devices.map((d, idx) => (
-            <option key={d.deviceId || idx} value={d.deviceId} className="bg-slate-900">
+            <option key={d.deviceId || idx} value={d.deviceId} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
               {d.label || `Camera ${idx + 1}`}
             </option>
           ))}
@@ -138,10 +138,10 @@ export function WebcamPage() {
         <select
           value={modelId}
           onChange={(e) => setModelId(e.target.value)}
-          className="rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
         >
           {models?.map((m) => (
-            <option key={m.id} value={m.id} disabled={!m.available} className="bg-slate-900">
+            <option key={m.id} value={m.id} disabled={!m.available} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
               {m.name}
             </option>
           ))}
@@ -150,11 +150,11 @@ export function WebcamPage() {
         <select
           value={blurMode}
           onChange={(e) => setBlurMode(e.target.value as BlurMode)}
-          className="rounded-lg border border-slate-700 bg-transparent px-3 py-2 text-sm"
+          className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
         >
-          <option value="none" className="bg-slate-900">No Blur</option>
-          <option value="gaussian" className="bg-slate-900">Gaussian Blur</option>
-          <option value="pixelate" className="bg-slate-900">Pixelate</option>
+          <option value="none" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">No Blur</option>
+          <option value="gaussian" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Gaussian Blur</option>
+          <option value="pixelate" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Pixelate</option>
         </select>
 
         {!running ? (
@@ -179,15 +179,15 @@ export function WebcamPage() {
           <button
             type="button"
             onClick={captureScreenshot}
-            className="px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-800 text-sm inline-flex items-center gap-1.5"
+            className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm inline-flex items-center gap-1.5"
           >
             <Download className="h-4 w-4" /> Capture Snapshot
           </button>
         )}
 
-        <div className="ml-auto text-xs font-mono text-slate-400">
-          Faces: <strong className="text-slate-100">{faceCount}</strong> · Latency:{" "}
-          <strong className="text-slate-100">{latencyMs.toFixed(0)} ms</strong>
+        <div className="ml-auto text-xs font-mono text-slate-600 dark:text-slate-400">
+          Faces: <strong className="text-slate-900 dark:text-slate-100">{faceCount}</strong> · Latency:{" "}
+          <strong className="text-slate-900 dark:text-slate-100">{latencyMs.toFixed(0)} ms</strong>
         </div>
       </div>
 
