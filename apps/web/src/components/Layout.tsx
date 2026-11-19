@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import {
   Camera,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { loadLocalPreferences, saveLocalPreferences } from "../lib/storage";
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -28,17 +29,21 @@ const NAV_ITEMS = [
 ];
 
 export function Layout() {
-  const [dark, setDark] = useState(true);
+  const [dark, setDark] = useState(() => loadLocalPreferences().theme === "dark");
   const { data: health } = useQuery({
     queryKey: ["health"],
     queryFn: api.health,
     refetchInterval: 15000,
   });
 
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+  }, [dark]);
+
   const toggleTheme = () => {
     const next = !dark;
     setDark(next);
-    document.documentElement.classList.toggle("dark", next);
+    saveLocalPreferences({ theme: next ? "dark" : "light" });
   };
 
   return (

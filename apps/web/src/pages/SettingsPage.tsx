@@ -1,17 +1,20 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Cloud, Save, XCircle } from "lucide-react";
+import { CheckCircle2, Cloud, HardDrive, Save, Trash2, XCircle } from "lucide-react";
 import { api } from "../lib/api";
+import { clearLocalPreferences, loadLocalPreferences, saveLocalPreferences } from "../lib/storage";
 import type { BlurMode, CloudTestResponse } from "../types/api";
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
   const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: api.getSettings });
+  const { data: capabilities } = useQuery({ queryKey: ["capabilities"], queryFn: api.capabilities });
   const { data: models } = useQuery({ queryKey: ["models"], queryFn: api.models });
 
-  const [defaultModelId, setDefaultModelId] = useState("haar");
-  const [defaultBlurMode, setDefaultBlurMode] = useState<BlurMode>("none");
-  const [confidence, setConfidence] = useState(0.6);
+  const localPrefs = loadLocalPreferences();
+  const [defaultModelId, setDefaultModelId] = useState(localPrefs.defaultModelId);
+  const [defaultBlurMode, setDefaultBlurMode] = useState<BlurMode>(localPrefs.defaultBlurMode);
+  const [confidence, setConfidence] = useState(localPrefs.confidence);
   const [allowCloud, setAllowCloud] = useState(false);
   const [cloudUrl, setCloudUrl] = useState("");
   const [retentionDays, setRetentionDays] = useState(30);
@@ -56,6 +59,11 @@ export function SettingsPage() {
     } else {
       localStorage.removeItem("facevision_api_token");
     }
+    saveLocalPreferences({
+      defaultModelId,
+      defaultBlurMode,
+      confidence,
+    });
     await api.updateSettings({
       default_model_id: defaultModelId,
       default_blur_mode: defaultBlurMode,
@@ -213,6 +221,34 @@ export function SettingsPage() {
               )}
             </div>
           )}
+        </div>
+
+        <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-sm flex items-center gap-1.5">
+              <HardDrive className="h-4 w-4 text-emerald-500" />
+              Storage &amp; Browser LocalStorage
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200 uppercase">
+              {capabilities?.storage_backend ?? "local"}
+            </span>
+          </div>
+          <p className="text-slate-600 dark:text-slate-400">
+            UI preferences and optional API tokens are cached in browser <code>localStorage</code>.
+            Media files use the server&apos;s configured storage backend (<code>local</code>,{" "}
+            <code>s3</code>/R2/MinIO, or <code>firebase</code>/GCS).
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              clearLocalPreferences();
+              setApiToken("");
+              setSavedMsg("Browser localStorage cleared.");
+            }}
+            className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5"
+          >
+            <Trash2 className="h-3.5 w-3.5" /> Clear Browser LocalStorage
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
