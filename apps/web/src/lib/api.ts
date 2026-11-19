@@ -3,6 +3,7 @@ import type {
   CloudTestResponse,
   CustomModelFile,
   DashboardStats,
+  GeneratedReportItem,
   HealthResponse,
   ImageMetadataInfo,
   ImageOperationResponse,
@@ -12,6 +13,7 @@ import type {
   ModelInfo,
   ModelSearchResult,
   SettingsData,
+  VisionCapabilities,
 } from "../types/api";
 
 const DEFAULT_API_BASE = "/api/v1";
@@ -135,6 +137,28 @@ export const api = {
     max_height?: number | null;
   }) =>
     request<ImageOperationResponse>("/media/image/compress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+
+  visionCapabilities: () => request<VisionCapabilities>("/vision/capabilities"),
+  detectObjects: (payload: { media_id: string; confidence_threshold?: number; vehicles_only?: boolean }) =>
+    request<{ count: number; detections: Array<Record<string, unknown>> }>("/vision/objects/detect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  countVehicles: (payload: { media_id: string; line_y_ratio?: number; max_frames?: number }) =>
+    request<Record<string, number>>("/vision/vehicles/count", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+
+  listReports: () => request<GeneratedReportItem[]>("/reports"),
+  generateReport: (payload: { job_id: string; title: string; template: string; format: "pdf" | "csv" | "json" }) =>
+    request<GeneratedReportItem>("/reports/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

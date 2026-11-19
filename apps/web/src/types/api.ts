@@ -151,6 +151,23 @@ export interface ImageMetadataInfo {
   exif_keys: string[];
 }
 
+export interface GeneratedReportItem {
+  id: string;
+  job_id: string;
+  title: string;
+  report_type: string;
+  format: "pdf" | "csv" | "json";
+  created_at: string;
+  download_url: string;
+}
+
+export interface VisionCapabilities {
+  face_detection: boolean;
+  object_detection_ready: boolean;
+  vehicle_analytics_ready: boolean;
+  object_model_hint: string;
+}
+
 export interface DashboardStats {
   total_media: number;
   total_jobs: number;
