@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Cpu, Download, ExternalLink, Search, Upload, XCircle } from "lucide-react";
+import { CheckCircle2, Cpu, Download, ExternalLink, Gauge, Search, Trash2, Upload, XCircle } from "lucide-react";
 import { api } from "../lib/api";
 import type { ModelSearchResult } from "../types/api";
 
@@ -13,6 +13,13 @@ export function ModelsPage() {
     queryKey: ["custom-models"],
     queryFn: api.listCustomModels,
   });
+  const { data: compat } = useQuery({
+    queryKey: ["model-compat"],
+    queryFn: api.modelCompatibility,
+  });
+
+  const [benchmarks, setBenchmarks] = useState<Record<string, { avg_inference_ms: number; estimated_fps: number; execution_provider: string }>>({});
+  const [benchmarkingId, setBenchmarkingId] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("face detection");
   const [searchResults, setSearchResults] = useState<ModelSearchResult[]>([]);
@@ -131,8 +138,45 @@ export function ModelsPage() {
                   {m.unavailable_reason}
                 </div>
               )}
+
+              {m.available && (
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    type="button"
+                    disabled={benchmarkingId === m.id}
+                    onClick={async () => {
+                      setBenchmarkingId(m.id);
+                      try {
+                        const res = await api.benchmarkModel(m.id, 10);
+                        setBenchmarks((prev) => ({ ...prev, [m.id]: res }));
+                      } finally {
+                        setBenchmarkingId(null);
+                      }
+                    }}
+                    className="px-2.5 py-1 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs inline-flex items-center gap-1"
+                  >
+                    <Gauge className="h-3.5 w-3.5" />
+                    {benchmarkingId === m.id ? "Benchmarking..." : "Run Benchmark"}
+                  </button>
+                  {benchmarks[m.id] && (
+                    <span className="text-xs font-mono text-emerald-500">
+                      {benchmarks[m.id].avg_inference_ms} ms ({benchmarks[m.id].estimated_fps} FPS · {benchmarks[m.id].execution_provider})
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           ))}
+        </div>
+      )}
+
+      {compat && (
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-xs flex flex-wrap gap-4">
+          <span>Python: <strong>{String(compat.python_version)}</strong></span>
+          <span>OS: <strong>{String(compat.os_name)} ({String(compat.architecture)})</strong></span>
+          <span>OpenCV: <strong>{String(compat.opencv_version)}</strong></span>
+          <span>ONNXRuntime: <strong>{compat.onnxruntime_available ? "Ready" : "Not installed"}</strong></span>
+          <span>Free Disk: <strong>{String(compat.free_disk_gb)} GB</strong></span>
         </div>
       )}
 
@@ -240,9 +284,20 @@ export function ModelsPage() {
               {customModels.map((cm) => (
                 <span
                   key={cm.filename}
-                  className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 font-mono"
+                  className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 font-mono inline-flex items-center gap-2"
                 >
                   {cm.filename} ({(cm.size_bytes / 1024 / 1024).toFixed(2)} MB)
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await api.deleteCustomModel(cm.filename);
+                      await queryClient.invalidateQueries({ queryKey: ["custom-models"] });
+                    }}
+                    className="hover:text-rose-500"
+                    title="Remove model"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
                 </span>
               ))}
             </div>

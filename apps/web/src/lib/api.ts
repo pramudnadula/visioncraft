@@ -71,6 +71,22 @@ export const api = {
   capabilities: () => request<CapabilitiesResponse>("/capabilities"),
   stats: () => request<DashboardStats>("/stats"),
   models: () => request<ModelInfo[]>("/models"),
+  modelCompatibility: () => request<Record<string, unknown>>("/models/compatibility"),
+  benchmarkModel: (model_id: string, iterations = 10) =>
+    request<{
+      model_id: string;
+      model_name: string;
+      initialization_ms: number;
+      avg_inference_ms: number;
+      estimated_fps: number;
+      execution_provider: string;
+    }>("/models/benchmark", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model_id, iterations }),
+    }),
+  deleteCustomModel: (filename: string) =>
+    request<void>(`/models/custom/${encodeURIComponent(filename)}`, { method: "DELETE" }),
   listCustomModels: () => request<CustomModelFile[]>("/models/custom"),
   searchModels: (q: string) =>
     request<ModelSearchResult[]>(`/models/search?q=${encodeURIComponent(q)}`),
