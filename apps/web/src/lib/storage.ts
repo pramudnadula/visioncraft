@@ -4,6 +4,7 @@ const PREFS_KEY = "facevision_local_prefs";
 
 export interface LocalBrowserPreferences {
   theme: "dark" | "light";
+  uiMode: "simple" | "advanced";
   defaultModelId: string;
   defaultBlurMode: BlurMode;
   confidence: number;
@@ -11,6 +12,7 @@ export interface LocalBrowserPreferences {
 
 const DEFAULT_PREFS: LocalBrowserPreferences = {
   theme: "dark",
+  uiMode: "simple",
   defaultModelId: "haar",
   defaultBlurMode: "none",
   confidence: 0.6,

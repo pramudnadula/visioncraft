@@ -36,6 +36,7 @@ const NAV_ITEMS = [
 
 export function Layout() {
   const [dark, setDark] = useState(() => loadLocalPreferences().theme === "dark");
+  const [uiMode, setUiMode] = useState<"simple" | "advanced">(() => loadLocalPreferences().uiMode);
   const { data: health } = useQuery({
     queryKey: ["health"],
     queryFn: api.health,
@@ -50,6 +51,12 @@ export function Layout() {
     const next = !dark;
     setDark(next);
     saveLocalPreferences({ theme: next ? "dark" : "light" });
+  };
+
+  const toggleUiMode = () => {
+    const next = uiMode === "simple" ? "advanced" : "simple";
+    setUiMode(next);
+    saveLocalPreferences({ uiMode: next });
   };
 
   return (
@@ -100,6 +107,13 @@ export function Layout() {
               {health ? health.execution_mode.replace(/_/g, " ") : "offline"}
             </span>
           </div>
+          <button
+            type="button"
+            onClick={toggleUiMode}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            <span>Mode: {uiMode === "simple" ? "Simple" : "Advanced"}</span>
+          </button>
           <button
             type="button"
             onClick={toggleTheme}
