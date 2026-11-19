@@ -197,3 +197,36 @@ def test_hand_object_and_mask_models_initialize_and_run() -> None:
         res = mask_clf.classify_faces(frame, [det])
         assert res["face_count"] == 1
         mask_clf.release()
+
+
+def test_face_emotion_ferplus_and_hybrid() -> None:
+    from pathlib import Path
+
+    from backend.app.detection.base import Detection
+    from backend.app.vision.faces.emotion import (
+        analyze_face_emotions,
+        draw_emotion_overlays,
+        is_ferplus_available,
+    )
+
+    models_dir = Path("models")
+    if not is_ferplus_available(models_dir):
+        return
+
+    rng = np.random.default_rng(7)
+    frame = rng.integers(40, 200, size=(240, 240, 3), dtype=np.uint8)
+    det = Detection(x=40, y=40, width=140, height=140, confidence=0.92)
+    res = analyze_face_emotions(frame, [det], mode="ferplus", models_dir=models_dir)
+    assert res is not None
+    assert res["face_count"] == 1
+    assert res["faces"][0]["dominant_emotion"] in {
+        "neutral",
+        "happiness",
+        "surprise",
+        "sadness",
+        "anger",
+        "disgust",
+        "fear",
+        "contempt",
+    }
+    draw_emotion_overlays(frame, [det], res)

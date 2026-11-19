@@ -1,4 +1,21 @@
 export type BlurMode = "none" | "gaussian" | "pixelate" | "mask" | "mesh" | "geometric" | "mesh_3d";
+export type EmotionMode = "off" | "hybrid" | "ferplus" | "blendshapes";
+
+export interface FaceEmotionFace {
+  face_index: number;
+  tracking_id: number | null;
+  dominant_emotion: string;
+  confidence: number;
+  source: string;
+  scores: Array<{ emotion: string; score: number }>;
+}
+
+export interface FaceEmotionResult {
+  mode: EmotionMode;
+  face_count: number;
+  faces: FaceEmotionFace[];
+  disclaimer?: string;
+}
 
 export interface FaceMeshSettings {
   enabled: boolean;

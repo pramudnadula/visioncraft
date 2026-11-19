@@ -5,7 +5,7 @@ import { useOutletContext } from "react-router-dom";
 import { FaceMeshControls, useFaceMeshSettings } from "../components/FaceMeshControls";
 import { FaceMeshResults } from "../components/FaceMeshResults";
 import { api } from "../lib/api";
-import type { BlurMode, FaceMeshResult } from "../types/api";
+import type { BlurMode, EmotionMode, FaceEmotionResult, FaceMeshResult } from "../types/api";
 
 export function WebcamPage() {
   const outlet = useOutletContext<{ uiMode?: "simple" | "advanced" } | null>();
@@ -25,8 +25,11 @@ export function WebcamPage() {
   const [running, setRunning] = useState(false);
   const [modelId, setModelId] = useState("haar");
   const [blurMode, setBlurMode] = useState<BlurMode>("none");
+  const [emotionMode, setEmotionMode] = useState<EmotionMode>("off");
   const modelIdRef = useRef(modelId);
   const blurModeRef = useRef(blurMode);
+  const emotionModeRef = useRef(emotionMode);
+  const [emotionResult, setEmotionResult] = useState<FaceEmotionResult | null>(null);
   const [annotatedSrc, setAnnotatedSrc] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,6 +39,10 @@ export function WebcamPage() {
   useEffect(() => {
     blurModeRef.current = blurMode;
   }, [blurMode]);
+
+  useEffect(() => {
+    emotionModeRef.current = emotionMode;
+  }, [emotionMode]);
 
   useEffect(() => {
     faceMeshRef.current = faceMesh;
@@ -98,6 +105,7 @@ export function WebcamPage() {
           latency_ms?: number;
           annotated_frame?: string;
           face_mesh?: FaceMeshResult | null;
+          emotions?: FaceEmotionResult | null;
         };
         if (data.error) {
           setError(data.error);
@@ -108,6 +116,7 @@ export function WebcamPage() {
         setFaceCount(data.face_count ?? 0);
         setLatencyMs(data.latency_ms ?? 0);
         setMeshResult(data.face_mesh ?? null);
+        setEmotionResult(data.emotions ?? null);
         if (data.annotated_frame) setAnnotatedSrc(data.annotated_frame);
         window.requestAnimationFrame(sendNextFrame);
       };
@@ -141,6 +150,7 @@ export function WebcamPage() {
         frame,
         model_id: modelIdRef.current,
         blur_mode: blurModeRef.current,
+        emotion_mode: emotionModeRef.current,
         draw_boxes: showBoxesRef.current,
         mesh: faceMeshRef.current.enabled ? faceMeshRef.current : null,
       })
@@ -203,6 +213,18 @@ export function WebcamPage() {
           <option value="mesh" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Privacy Net (Mesh)</option>
         </select>
 
+        <select
+          aria-label="Face emotion mode"
+          value={emotionMode}
+          onChange={(e) => setEmotionMode(e.target.value as EmotionMode)}
+          className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
+        >
+          <option value="off" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Emotion: Off</option>
+          <option value="hybrid" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Emotion: Hybrid (FER+ + Mesh)</option>
+          <option value="ferplus" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Emotion: FER+ ONNX</option>
+          <option value="blendshapes" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Emotion: Blendshapes</option>
+        </select>
+
         {!running ? (
           <button
             type="button"
@@ -260,6 +282,44 @@ export function WebcamPage() {
             Show face boxes
           </label>
           <FaceMeshControls value={faceMesh} onChange={setFaceMesh} advanced={outlet?.uiMode === "advanced"} live />
+          {emotionMode !== "off" && (
+            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-sm">Live Expression</span>
+                <span className="text-[11px] uppercase tracking-wider text-slate-400">{emotionMode}</span>
+              </div>
+              {emotionResult && emotionResult.faces.length > 0 ? (
+                <div className="space-y-3">
+                  {emotionResult.faces.map((face) => (
+                    <div key={face.face_index} className="space-y-1.5 border-t border-slate-200 dark:border-slate-800 pt-2 first:border-t-0 first:pt-0">
+                      <div className="flex items-center justify-between font-medium">
+                        <span>Face #{face.face_index + 1}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 capitalize">
+                          {face.dominant_emotion} {(face.confidence * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      {face.scores.slice(0, 3).map((s) => (
+                        <div key={s.emotion} className="space-y-0.5">
+                          <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 capitalize">
+                            <span>{s.emotion}</span>
+                            <span>{(s.score * 100).toFixed(0)}%</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                            <div className="h-full bg-indigo-500" style={{ width: `${Math.min(100, s.score * 100)}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  {emotionResult.disclaimer && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">{emotionResult.disclaimer}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-slate-500 dark:text-slate-400">Waiting for a detected face…</p>
+              )}
+            </div>
+          )}
           {faceMesh.enabled && <FaceMeshResults result={meshResult} />}
         </div>
       </div>

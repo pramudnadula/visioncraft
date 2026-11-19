@@ -14,6 +14,7 @@ from backend.app.core.exceptions import FaceVisionError, JobNotFoundError
 from backend.app.detection.base import DetectorConfig
 from backend.app.privacy.blur import validate_blur_mode
 from backend.app.processing.webcam import WebcamProcessor
+from backend.app.vision.faces.emotion import validate_emotion_mode
 from backend.app.vision.faces.face_mesh import FaceMeshService, FaceMeshSettings
 
 ws_router = APIRouter(prefix="/ws/v1", tags=["websocket"])
@@ -92,6 +93,7 @@ async def webcam_stream_ws(websocket: WebSocket) -> None:
             draw_boxes = bool(payload.get("draw_boxes", True))
             try:
                 blur_mode = validate_blur_mode(str(payload.get("blur_mode", "none")))
+                emotion_mode = validate_emotion_mode(str(payload.get("emotion_mode", "off")))
             except ValueError as exc:
                 await websocket.send_json({"error": str(exc)})
                 continue
@@ -145,6 +147,8 @@ async def webcam_stream_ws(websocket: WebSocket) -> None:
                 encode_jpeg=True,
                 mesh_service=mesh_service,
                 mesh_settings=mesh_settings,
+                emotion_mode=emotion_mode,
+                models_dir=container.settings.resolved_models_dir,
             )
             encoded_out = (
                 f"data:image/jpeg;base64,{base64.b64encode(res.annotated_jpeg).decode('ascii')}"
@@ -158,6 +162,7 @@ async def webcam_stream_ws(websocket: WebSocket) -> None:
                     "detections": [d.to_dict() for d in res.detections],
                     "annotated_frame": encoded_out,
                     "face_mesh": res.face_mesh,
+                    "emotions": res.emotions,
                 }
             )
     except WebSocketDisconnect:
