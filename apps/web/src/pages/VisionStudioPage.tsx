@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Accessibility, Car, Hand, ScanSearch, ShieldCheck, Smile } from "lucide-react";
+import { Accessibility, Box, Car, Hand, ScanSearch, ShieldCheck, Smile } from "lucide-react";
 import { DropZone } from "../components/DropZone";
 import { api } from "../lib/api";
 import type { MediaAsset } from "../types/api";
 
-type VisionTask = "objects" | "vehicles" | "mask" | "facial" | "hands" | "pose";
+type VisionTask = "mesh3d" | "objects" | "vehicles" | "mask" | "facial" | "hands" | "pose";
 
 export function VisionStudioPage() {
   const { data: caps } = useQuery({
@@ -14,7 +14,7 @@ export function VisionStudioPage() {
   });
 
   const [media, setMedia] = useState<MediaAsset | null>(null);
-  const [task, setTask] = useState<VisionTask>("objects");
+  const [task, setTask] = useState<VisionTask>("mesh3d");
   const [results, setResults] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -36,6 +36,7 @@ export function VisionStudioPage() {
 
   const isTaskReady = (t: VisionTask): boolean => {
     if (!caps) return false;
+    if (t === "mesh3d") return caps.face_mesh_3d_ready;
     if (t === "objects" || t === "vehicles") return caps.object_detection_ready;
     if (t === "mask") return caps.face_mask_ready;
     if (t === "facial") return caps.facial_analysis_ready;
@@ -49,7 +50,9 @@ export function VisionStudioPage() {
     setError(null);
     setBusy(true);
     try {
-      if (task === "vehicles") {
+      if (task === "mesh3d") {
+        setResults(await api.analyze3DMesh({ media_id: media.id }));
+      } else if (task === "vehicles") {
         if (media.media_type === "video") {
           setResults(await api.countVehicles({ media_id: media.id }));
         } else {
@@ -74,6 +77,7 @@ export function VisionStudioPage() {
   };
 
   const tasks: Array<{ id: VisionTask; label: string; icon: typeof ScanSearch; ready: boolean }> = [
+    { id: "mesh3d", label: "3D Face Mesh", icon: Box, ready: isTaskReady("mesh3d") },
     { id: "objects", label: "Objects", icon: ScanSearch, ready: isTaskReady("objects") },
     { id: "vehicles", label: "Vehicles", icon: Car, ready: isTaskReady("vehicles") },
     { id: "mask", label: "Face Mask", icon: ShieldCheck, ready: isTaskReady("mask") },

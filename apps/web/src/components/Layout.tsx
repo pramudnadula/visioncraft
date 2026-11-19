@@ -20,18 +20,36 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { loadLocalPreferences, saveLocalPreferences } from "../lib/storage";
 
-const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/images", label: "Image Detection", icon: ImageIcon },
-  { to: "/videos", label: "Video Detection", icon: Film },
-  { to: "/webcam", label: "Live Webcam", icon: Camera },
-  { to: "/vision", label: "Object & Vehicles", icon: ScanSearch },
-  { to: "/media-studio", label: "Media Studio", icon: SlidersHorizontal },
-  { to: "/batch", label: "Batch Processing", icon: Layers },
-  { to: "/reports", label: "Reports", icon: FileText },
-  { to: "/history", label: "History", icon: History },
-  { to: "/models", label: "Models", icon: Cpu },
-  { to: "/settings", label: "Settings", icon: Settings },
+const NAV_SECTIONS = [
+  {
+    heading: "Overview",
+    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    heading: "Face & Privacy",
+    items: [
+      { to: "/images", label: "Image Detection", icon: ImageIcon },
+      { to: "/videos", label: "Video Detection", icon: Film },
+      { to: "/webcam", label: "Live Webcam", icon: Camera },
+      { to: "/batch", label: "Batch Queue", icon: Layers },
+    ],
+  },
+  {
+    heading: "AI & Media Studios",
+    items: [
+      { to: "/vision", label: "3D Mesh & AI Vision", icon: ScanSearch },
+      { to: "/media-studio", label: "Edit & Compress", icon: SlidersHorizontal },
+    ],
+  },
+  {
+    heading: "Management",
+    items: [
+      { to: "/reports", label: "Reports & PDF", icon: FileText },
+      { to: "/history", label: "History", icon: History },
+      { to: "/models", label: "AI Models", icon: Cpu },
+      { to: "/settings", label: "Settings", icon: Settings },
+    ],
+  },
 ];
 
 export function Layout() {
@@ -63,40 +81,47 @@ export function Layout() {
     <div className="min-h-screen flex bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <aside className="w-64 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/70 flex flex-col">
         <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+          <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-sm">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <div className="font-semibold tracking-tight">FaceVision</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              AI Privacy Platform
+            <div className="font-bold tracking-tight">FaceVision</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+              AI Vision &amp; Privacy Suite
             </div>
           </div>
         </div>
 
-        <nav className="flex-1 p-3 space-y-1">
-          {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === "/"}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`
-              }
-            >
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
-            </NavLink>
+        <nav className="flex-1 p-3 space-y-4 overflow-y-auto">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.heading} className="space-y-1">
+              <div className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                {section.heading}
+              </div>
+              {section.items.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === "/"}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isActive
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`
+                  }
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-500 dark:text-slate-400">Backend</span>
+            <span className="text-slate-500 dark:text-slate-400">Engine</span>
             <span
               className={`px-2 py-0.5 rounded-full font-medium ${
                 health?.status === "ok"
@@ -104,24 +129,26 @@ export function Layout() {
                   : "bg-rose-500/15 text-rose-500"
               }`}
             >
-              {health ? health.execution_mode.replace(/_/g, " ") : "offline"}
+              {health ? "Local Ready" : "Offline"}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={toggleUiMode}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            <span>Mode: {uiMode === "simple" ? "Simple" : "Advanced"}</span>
-          </button>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-            <span>{dark ? "Light Theme" : "Dark Theme"}</span>
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={toggleUiMode}
+              className="flex items-center justify-center px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              {uiMode === "simple" ? "Simple" : "Advanced"}
+            </button>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              <span>{dark ? "Light" : "Dark"}</span>
+            </button>
+          </div>
         </div>
       </aside>
 

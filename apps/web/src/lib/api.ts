@@ -195,6 +195,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
+  analyze3DMesh: (payload: { media_id: string }) =>
+    request<Record<string, unknown>>("/vision/faces/mesh-3d", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
 
   listReports: () => request<GeneratedReportItem[]>("/reports"),
   generateReport: (payload: { job_id: string; title: string; template: string; format: "pdf" | "csv" | "json" }) =>

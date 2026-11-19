@@ -1,4 +1,4 @@
-export type BlurMode = "none" | "gaussian" | "pixelate" | "mask" | "mesh" | "geometric";
+export type BlurMode = "none" | "gaussian" | "pixelate" | "mask" | "mesh" | "geometric" | "mesh_3d";
 export type ExecutionMode = "local_desktop" | "web_local_agent" | "cloud";
 
 export interface HealthResponse {
@@ -163,6 +163,7 @@ export interface GeneratedReportItem {
 
 export interface VisionCapabilities {
   face_detection: boolean;
+  face_mesh_3d_ready: boolean;
   face_mask_ready: boolean;
   facial_analysis_ready: boolean;
   hand_landmarks_ready: boolean;

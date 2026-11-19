@@ -1,6 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Activity, Camera, CheckCircle2, Film, Image as ImageIcon, Layers, ShieldAlert } from "lucide-react";
+import {
+  Activity,
+  Box,
+  Camera,
+  CheckCircle2,
+  FileText,
+  Film,
+  Image as ImageIcon,
+  ShieldAlert,
+  SlidersHorizontal,
+} from "lucide-react";
 import { api } from "../lib/api";
 
 export function DashboardPage() {
@@ -17,29 +27,25 @@ export function DashboardPage() {
   });
 
   const cards = [
-    { label: "Media Uploaded", value: stats?.total_media ?? 0, icon: ImageIcon, color: "text-indigo-400" },
-    { label: "Faces Detected", value: stats?.total_faces_detected ?? 0, icon: CheckCircle2, color: "text-emerald-400" },
-    { label: "Active Jobs", value: stats?.active_jobs ?? 0, icon: Activity, color: "text-amber-400" },
-    { label: "Failed Jobs", value: stats?.failed_jobs ?? 0, icon: ShieldAlert, color: "text-rose-400" },
+    { label: "Media Uploaded", value: stats?.total_media ?? 0, icon: ImageIcon, color: "text-indigo-500" },
+    { label: "Faces Detected", value: stats?.total_faces_detected ?? 0, icon: CheckCircle2, color: "text-emerald-500" },
+    { label: "Active Jobs", value: stats?.active_jobs ?? 0, icon: Activity, color: "text-amber-500" },
+    { label: "Failed Jobs", value: stats?.failed_jobs ?? 0, icon: ShieldAlert, color: "text-rose-500" },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-gradient-to-r from-indigo-600/10 via-violet-600/5 to-transparent p-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Local-first AI face detection, tracking, and privacy anonymization.
+          <h1 className="text-2xl font-bold tracking-tight">Welcome to FaceVision</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+            Private, local-first AI face detection, 3D face mesh, video tracking, and image editing — no coding required.
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <span className="text-slate-500">Mode:</span>
-          <span className="font-semibold">
-            {stats?.execution_mode.replace(/_/g, " ") ?? "loading..."}
-          </span>
-          <span className="mx-1 text-slate-600">·</span>
-          <span className={stats?.cloud_processing_enabled ? "text-amber-400" : "text-emerald-400"}>
-            {stats?.cloud_processing_enabled ? "Cloud Opt-In Enabled" : "Local Only"}
+          <span className="text-slate-600 dark:text-slate-400">Privacy:</span>
+          <span className={stats?.cloud_processing_enabled ? "text-amber-500 font-semibold" : "text-emerald-500 font-semibold"}>
+            {stats?.cloud_processing_enabled ? "Cloud Opt-In Enabled" : "100% Local Processing"}
           </span>
         </div>
       </div>
@@ -61,23 +67,30 @@ export function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
-          { to: "/images", title: "Image Studio", desc: "Detect & blur faces with before/after view", icon: ImageIcon },
-          { to: "/videos", title: "Video Studio", desc: "Frame-by-frame tracking & MP4 export", icon: Film },
-          { to: "/webcam", title: "Live Webcam", desc: "Real-time privacy blur & FPS HUD", icon: Camera },
-          { to: "/batch", title: "Batch Queue", desc: "Folder import & ZIP export", icon: Layers },
-        ].map(({ to, title, desc, icon: Icon }) => (
-          <Link
-            key={to}
-            to={to}
-            className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-indigo-500 transition-colors"
-          >
-            <Icon className="h-5 w-5 text-indigo-500 mb-2" />
-            <div className="font-semibold text-sm">{title}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{desc}</div>
-          </Link>
-        ))}
+      <div>
+        <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3">
+          What would you like to do today?
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            { to: "/images", title: "Detect & Blur Faces", desc: "Upload a photo to detect faces, apply privacy blur, or draw 3D mesh.", icon: ImageIcon },
+            { to: "/webcam", title: "Live Webcam", desc: "Real-time face blur, geometric mesh, and 3D head pose on your camera.", icon: Camera },
+            { to: "/videos", title: "Video Privacy & Tracking", desc: "Track faces across video frames and export anonymized MP4.", icon: Film },
+            { to: "/media-studio", title: "Edit, Resize & Compress", desc: "Crop photos, convert formats, or shrink file sizes to exact KB.", icon: SlidersHorizontal },
+            { to: "/vision", title: "3D Face Mesh & Objects", desc: "Analyze 3D head pose (yaw/pitch/roll), objects, vehicles, and masks.", icon: Box },
+            { to: "/reports", title: "Generate PDF Reports", desc: "Export plain-language PDF, CSV, and JSON summaries for any job.", icon: FileText },
+          ].map(({ to, title, desc, icon: Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-indigo-500 transition-colors"
+            >
+              <Icon className="h-5 w-5 text-indigo-500 mb-2" />
+              <div className="font-semibold text-sm">{title}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{desc}</div>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
@@ -89,7 +102,7 @@ export function DashboardPage() {
         </div>
         {!recentJobs || recentJobs.length === 0 ? (
           <p className="text-sm text-slate-500">
-            No processing jobs yet. Upload an image or video to get started.
+            No processing jobs yet. Pick any tool above to get started!
           </p>
         ) : (
           <div className="overflow-x-auto">
