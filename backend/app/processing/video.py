@@ -108,7 +108,7 @@ class VideoProcessingService:
 
     @staticmethod
     def _open_writer(path: Path, fps: float, size: tuple[int, int]) -> cv2.VideoWriter:
-        fourcc_fn = getattr(cv2, "VideoWriter_fourcc")
+        fourcc_fn = cv2.VideoWriter_fourcc  # type: ignore[attr-defined]
         for codec in ("avc1", "mp4v"):
             fourcc = fourcc_fn(*codec)
             writer = cv2.VideoWriter(str(path), fourcc, fps, size)
@@ -220,7 +220,9 @@ class VideoProcessingService:
                 )
 
                 if progress_callback is not None:
-                    estimated_total = max(1, meta.total_frames // frame_step) if meta.total_frames > 0 else frames_processed
+                    estimated_total = (
+                        max(1, meta.total_frames // frame_step) if meta.total_frames > 0 else frames_processed
+                    )
                     progress_callback(frames_processed, estimated_total, len(detections))
 
                 if cfg.max_frames is not None and frames_processed >= cfg.max_frames:

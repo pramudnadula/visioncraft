@@ -100,10 +100,7 @@ class YuNetDetector(FaceDetector):
             if w < min_w or h < min_h:
                 continue
             confidence = float(row[-1])
-            landmarks = [
-                LandmarkPoint(x=float(row[i]), y=float(row[i + 1]))
-                for i in range(4, 14, 2)
-            ]
+            landmarks = [LandmarkPoint(x=float(row[i]), y=float(row[i + 1])) for i in range(4, 14, 2)]
             detections.append(
                 Detection(
                     x=max(0, x),
@@ -132,9 +129,7 @@ class YuNetDetector(FaceDetector):
             available=available,
             license="MIT (OpenCV Zoo)",
             unavailable_reason=(
-                None
-                if available
-                else "Place face_detection_yunet_2023mar.onnx in the models/ directory."
+                None if available else "Place face_detection_yunet_2023mar.onnx in the models/ directory."
             ),
         )
 

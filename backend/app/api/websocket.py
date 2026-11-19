@@ -58,7 +58,7 @@ async def job_progress_ws(websocket: WebSocket, job_id: str) -> None:
             await websocket.send_json(event.to_dict())
             if event.status in {"COMPLETED", "FAILED", "CANCELLED"}:
                 break
-    except (WebSocketDisconnect, asyncio.TimeoutError):
+    except (TimeoutError, WebSocketDisconnect):
         pass
     finally:
         container.event_bus.unsubscribe(job_id, queue)

@@ -3,7 +3,12 @@
 from .batch import BatchItemResult, BatchProcessingResult, BatchProcessingService
 from .image import ImageProcessingConfig, ImageProcessingResult, ImageProcessingService
 from .tracking import FaceTracker
-from .video import VideoMetadata, VideoProcessingConfig, VideoProcessingResult, VideoProcessingService
+from .video import (
+    VideoMetadata,
+    VideoProcessingConfig,
+    VideoProcessingResult,
+    VideoProcessingService,
+)
 from .webcam import WebcamFrameResult, WebcamProcessor
 
 __all__ = [

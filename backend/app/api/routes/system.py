@@ -49,9 +49,7 @@ def get_dashboard_stats(container: AppStateContainer = Depends(get_container)) -
         total_media = session.query(func.count(MediaAsset.id)).scalar() or 0
         total_jobs = session.query(func.count(ProcessingJob.id)).scalar() or 0
         completed_jobs = (
-            session.query(func.count(ProcessingJob.id))
-            .filter(ProcessingJob.status == "COMPLETED")
-            .scalar()
+            session.query(func.count(ProcessingJob.id)).filter(ProcessingJob.status == "COMPLETED").scalar()
             or 0
         )
         active_jobs = (
@@ -61,10 +59,7 @@ def get_dashboard_stats(container: AppStateContainer = Depends(get_container)) -
             or 0
         )
         failed_jobs = (
-            session.query(func.count(ProcessingJob.id))
-            .filter(ProcessingJob.status == "FAILED")
-            .scalar()
-            or 0
+            session.query(func.count(ProcessingJob.id)).filter(ProcessingJob.status == "FAILED").scalar() or 0
         )
         total_faces = session.query(func.coalesce(func.sum(ProcessingJob.faces_detected), 0)).scalar() or 0
 

@@ -132,7 +132,9 @@ class BatchProcessingService:
             writer = csv.writer(fh)
             writer.writerow(["media_id", "filename", "status", "face_count", "error"])
             for item in result.items:
-                writer.writerow([item.media_id, item.filename, item.status, item.face_count, item.error or ""])
+                writer.writerow(
+                    [item.media_id, item.filename, item.status, item.face_count, item.error or ""]
+                )
         result.report_csv_path = report_csv_path
 
         zip_path = output_dir / "batch_outputs.zip"

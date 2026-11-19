@@ -12,9 +12,7 @@ from backend.app.detection.base import Detection
 BlurMode = Literal["none", "gaussian", "pixelate"]
 
 
-def _clip_roi(
-    frame: cv2.typing.MatLike, detection: Detection
-) -> tuple[int, int, int, int] | None:
+def _clip_roi(frame: cv2.typing.MatLike, detection: Detection) -> tuple[int, int, int, int] | None:
     """Clamp detection coordinates to frame bounds; return None if empty."""
     img_h, img_w = frame.shape[:2]
     x1 = max(0, detection.x)
@@ -53,9 +51,7 @@ def blur_face_region(
             (max(1, roi_w // 12), max(1, roi_h // 12)),
             interpolation=cv2.INTER_LINEAR,
         )
-        frame[y1:y2, x1:x2] = cv2.resize(
-            small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST
-        )
+        frame[y1:y2, x1:x2] = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
 
 
 def apply_privacy_blur(
@@ -149,9 +145,7 @@ def draw_hud(
     if fps is not None:
         text = f"{text} | FPS: {fps:.1f}"
 
-    (text_w, text_h), baseline = cv2.getTextSize(
-        text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
-    )
+    (text_w, text_h), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
     pad = 10
     cv2.rectangle(
         frame,

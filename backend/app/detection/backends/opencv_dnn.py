@@ -109,9 +109,7 @@ class OpenCVDNNDetector(FaceDetector):
             available=available,
             license="BSD-3-Clause (OpenCV)",
             unavailable_reason=(
-                None
-                if available
-                else f"Place {DEFAULT_PROTOTXT} and {DEFAULT_WEIGHTS} in models/."
+                None if available else f"Place {DEFAULT_PROTOTXT} and {DEFAULT_WEIGHTS} in models/."
             ),
         )
 

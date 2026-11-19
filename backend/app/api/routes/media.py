@@ -78,15 +78,11 @@ async def upload_media(
             height, width = img.shape[:2]
             max_dim = container.settings.max_image_dimension
             if width > max_dim or height > max_dim:
-                raise MediaValidationError(
-                    f"Image dimensions ({width}x{height}) exceed limit ({max_dim})."
-                )
+                raise MediaValidationError(f"Image dimensions ({width}x{height}) exceed limit ({max_dim}).")
         else:
             vmeta = VideoProcessingService.extract_metadata(local_path)
             if vmeta.duration_seconds > container.settings.max_video_duration_seconds:
-                raise MediaValidationError(
-                    f"Video duration ({vmeta.duration_seconds:.1f}s) exceeds limit."
-                )
+                raise MediaValidationError(f"Video duration ({vmeta.duration_seconds:.1f}s) exceeds limit.")
             width = vmeta.width
             height = vmeta.height
             duration_seconds = round(vmeta.duration_seconds, 2)
@@ -128,12 +124,7 @@ def list_media(
     container: AppStateContainer = Depends(get_container),
 ) -> list[MediaAssetResponse]:
     with container.db.session_scope() as session:
-        assets = (
-            session.query(MediaAsset)
-            .order_by(MediaAsset.created_at.desc())
-            .limit(min(limit, 500))
-            .all()
-        )
+        assets = session.query(MediaAsset).order_by(MediaAsset.created_at.desc()).limit(min(limit, 500)).all()
         for a in assets:
             session.expunge(a)
     return [_to_response(a) for a in assets]

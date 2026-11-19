@@ -159,7 +159,9 @@ class ImageProcessingService:
         self._write_csv(report_csv_path, detections)
         result.report_csv_path = report_csv_path
 
-        logger.info("Processed image (%dx%d): %d face(s) in %.1fms", width, height, len(detections), duration_ms)
+        logger.info(
+            "Processed image (%dx%d): %d face(s) in %.1fms", width, height, len(detections), duration_ms
+        )
         return result
 
     @staticmethod
@@ -168,11 +170,13 @@ class ImageProcessingService:
             writer = csv.writer(fh)
             writer.writerow(["face_index", "x", "y", "width", "height", "confidence"])
             for idx, det in enumerate(detections, start=1):
-                writer.writerow([
-                    idx,
-                    det.x,
-                    det.y,
-                    det.width,
-                    det.height,
-                    f"{det.confidence:.4f}" if det.confidence is not None else "",
-                ])
+                writer.writerow(
+                    [
+                        idx,
+                        det.x,
+                        det.y,
+                        det.width,
+                        det.height,
+                        f"{det.confidence:.4f}" if det.confidence is not None else "",
+                    ]
+                )

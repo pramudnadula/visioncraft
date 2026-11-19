@@ -1,6 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import App from "../App";
+import { DropZone } from "../components/DropZone";
 
 describe("FaceVision Web App", () => {
   it("renders navigation and dashboard", async () => {
@@ -39,5 +40,16 @@ describe("FaceVision Web App", () => {
     expect(screen.getByText("Video Detection")).toBeInTheDocument();
     expect(screen.getAllByText("Live Webcam").length).toBeGreaterThanOrEqual(1);
     expect(await screen.findByText("5")).toBeInTheDocument();
+  });
+
+  it("invokes onFilesSelected when files are chosen in DropZone", () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <DropZone accept="image/png" multiple allowFolder onFilesSelected={onSelect} />
+    );
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(["png"], "test.png", { type: "image/png" });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(onSelect).toHaveBeenCalledWith([file]);
   });
 });

@@ -62,9 +62,7 @@ class RetinaFaceDetector(FaceDetector):
             self._session = ort.InferenceSession(str(model_path), providers=providers)
             self._providers = self._session.get_providers()
         except Exception as exc:
-            raise ModelInitializationError(
-                f"Failed to initialize RetinaFace session: {exc}"
-            ) from exc
+            raise ModelInitializationError(f"Failed to initialize RetinaFace session: {exc}") from exc
         self._initialized = True
 
     def detect(self, frame: cv2.typing.MatLike) -> list[Detection]:

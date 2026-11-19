@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 
@@ -55,7 +55,7 @@ def update_user_settings(
             session.add(row)
         else:
             row.value_json = json.dumps(current)
-            row.updated_at = datetime.now(timezone.utc)
+            row.updated_at = datetime.now(UTC)
 
     # Reflect mutable runtime toggles
     if "allow_cloud_processing" in updates:

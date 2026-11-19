@@ -34,7 +34,7 @@ def _write_synthetic_image(path: Path, width: int = 240, height: int = 240) -> P
 
 
 def _write_synthetic_video(path: Path, frames: int = 12, width: int = 160, height: int = 120) -> Path:
-    fourcc = getattr(cv2, "VideoWriter_fourcc")(*"mp4v")
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(path), fourcc, 15.0, (width, height))
     assert writer.isOpened()
     for i in range(frames):

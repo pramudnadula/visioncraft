@@ -147,3 +147,75 @@ def test_settings_persistence(tmp_path: Path) -> None:
         assert r2.status_code == 200
         assert r2.json()["default_blur_mode"] == "pixelate"
         assert r2.json()["retention_days"] == 14
+
+
+def _synthetic_mp4_bytes(tmp_path: Path) -> bytes:
+    path = tmp_path / "sample.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
+    writer = cv2.VideoWriter(str(path), fourcc, 15.0, (160, 120))
+    assert writer.isOpened()
+    for i in range(6):
+        writer.write(np.full((120, 160, 3), (i * 30) % 255, dtype=np.uint8))
+    writer.release()
+    return path.read_bytes()
+
+
+def test_video_and_batch_jobs_and_websocket_webcam(tmp_path: Path) -> None:
+    with _make_client(tmp_path) as client:
+        # 1. Video job
+        vid_bytes = _synthetic_mp4_bytes(tmp_path)
+        v_up = client.post(
+            "/api/v1/media/upload",
+            files={"file": ("clip.mp4", vid_bytes, "video/mp4")},
+        )
+        assert v_up.status_code == 201
+        vid_id = v_up.json()["id"]
+
+        v_job = client.post(
+            "/api/v1/jobs",
+            json={"job_type": "video", "media_ids": [vid_id], "model_id": "haar"},
+        )
+        assert v_job.status_code == 201
+        v_job_id = v_job.json()["id"]
+
+        status = ""
+        for _ in range(40):
+            status = client.get(f"/api/v1/jobs/{v_job_id}").json()["status"]
+            if status in {"COMPLETED", "FAILED", "CANCELLED"}:
+                break
+            time.sleep(0.1)
+        assert status == "COMPLETED"
+        assert client.get(f"/api/v1/jobs/{v_job_id}/artifacts/processed.mp4").status_code == 200
+
+        # 2. Batch job + ZIP download
+        img_bytes = _synthetic_png_bytes()
+        i_up = client.post(
+            "/api/v1/media/upload",
+            files={"file": ("img1.png", img_bytes, "image/png")},
+        )
+        assert i_up.status_code == 201
+        b_job = client.post(
+            "/api/v1/jobs",
+            json={"job_type": "batch", "media_ids": [i_up.json()["id"]], "model_id": "haar"},
+        )
+        assert b_job.status_code == 201
+        b_job_id = b_job.json()["id"]
+
+        for _ in range(40):
+            status = client.get(f"/api/v1/jobs/{b_job_id}").json()["status"]
+            if status in {"COMPLETED", "FAILED", "CANCELLED"}:
+                break
+            time.sleep(0.1)
+        assert status == "COMPLETED"
+        assert client.get(f"/api/v1/jobs/{b_job_id}/artifacts/batch_outputs.zip").status_code == 200
+
+        # 3. WebSocket webcam frame processing
+        import base64
+
+        b64_img = base64.b64encode(img_bytes).decode("ascii")
+        with client.websocket_connect("/ws/v1/webcam") as ws:
+            ws.send_json({"frame": f"data:image/png;base64,{b64_img}", "model_id": "haar"})
+            msg = ws.receive_json()
+            assert "face_count" in msg
+            assert "latency_ms" in msg
+            assert msg["annotated_frame"].startswith("data:image/jpeg;base64,")

@@ -46,14 +46,10 @@ class HaarCascadeDetector(FaceDetector):
     def initialize(self) -> None:
         cascade_path = self._resolve_cascade_path()
         if cascade_path is None:
-            raise ModelNotAvailableError(
-                f"Haar cascade file '{DEFAULT_CASCADE_FILENAME}' not found."
-            )
+            raise ModelNotAvailableError(f"Haar cascade file '{DEFAULT_CASCADE_FILENAME}' not found.")
         classifier = cv2.CascadeClassifier(str(cascade_path))
         if classifier.empty():
-            raise ModelInitializationError(
-                f"Failed to load Haar cascade classifier from '{cascade_path}'."
-            )
+            raise ModelInitializationError(f"Failed to load Haar cascade classifier from '{cascade_path}'.")
         self._classifier = classifier
         self._initialized = True
 
@@ -71,10 +67,7 @@ class HaarCascadeDetector(FaceDetector):
             minNeighbors=self.config.min_neighbors,
             minSize=self.config.min_face_size,
         )
-        return [
-            Detection(x=int(x), y=int(y), width=int(w), height=int(h))
-            for (x, y, w, h) in raw_faces
-        ]
+        return [Detection(x=int(x), y=int(y), width=int(w), height=int(h)) for (x, y, w, h) in raw_faces]
 
     def get_metadata(self) -> DetectorMetadata:
         available = self.is_available()

@@ -6,7 +6,7 @@ import json
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
@@ -47,7 +47,7 @@ ACTIVE_STATES = {"QUEUED", "VALIDATING", "PROCESSING", "FINALIZING"}
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class JobManager:
@@ -93,11 +93,7 @@ class JobManager:
                 job.error_message = "Job interrupted by server restart. You can retry this job."
                 job.completed_at = _utcnow()
 
-            queued = (
-                session.query(ProcessingJob)
-                .filter(ProcessingJob.status == "QUEUED")
-                .all()
-            )
+            queued = session.query(ProcessingJob).filter(ProcessingJob.status == "QUEUED").all()
             requeue_ids = [j.id for j in queued]
 
         for job_id in requeue_ids:
@@ -397,7 +393,9 @@ class JobManager:
                 inputs: list[tuple[str, str, Path]] = []
                 for mid in media_ids:
                     asset = asset_map[mid]
-                    inputs.append((mid, asset.original_filename, self.storage.resolve_local_path(asset.storage_key)))
+                    inputs.append(
+                        (mid, asset.original_filename, self.storage.resolve_local_path(asset.storage_key))
+                    )
 
                 batch_cfg = ImageProcessingConfig(
                     blur_mode=cfg_dict.get("blur_mode", "none"),

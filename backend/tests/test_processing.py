@@ -58,7 +58,7 @@ def _create_image(path: Path) -> Path:
 
 
 def _create_video(path: Path, frames: int = 10) -> Path:
-    fourcc = getattr(cv2, "VideoWriter_fourcc")(*"mp4v")
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(path), fourcc, 15.0, (160, 120))
     assert writer.isOpened()
     for i in range(frames):
