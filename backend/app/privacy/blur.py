@@ -9,7 +9,7 @@ import cv2
 
 from backend.app.detection.base import Detection
 
-BlurMode = Literal["none", "gaussian", "pixelate"]
+BlurMode = Literal["none", "gaussian", "pixelate", "mask", "mesh"]
 
 
 def _clip_roi(frame: cv2.typing.MatLike, detection: Detection) -> tuple[int, int, int, int] | None:
@@ -52,6 +52,22 @@ def blur_face_region(
             interpolation=cv2.INTER_LINEAR,
         )
         frame[y1:y2, x1:x2] = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
+    elif mode == "mask":
+        frame[y1:y2, x1:x2] = (15, 15, 15)
+    elif mode == "mesh":
+        roi_h, roi_w = roi.shape[:2]
+        small = cv2.resize(
+            roi,
+            (max(1, roi_w // 10), max(1, roi_h // 10)),
+            interpolation=cv2.INTER_LINEAR,
+        )
+        covered = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
+        step = max(8, min(roi_w, roi_h) // 8)
+        for gx in range(0, roi_w, step):
+            cv2.line(covered, (gx, 0), (gx, roi_h), (25, 25, 25), 1)
+        for gy in range(0, roi_h, step):
+            cv2.line(covered, (0, gy), (roi_w, gy), (25, 25, 25), 1)
+        frame[y1:y2, x1:x2] = covered
 
 
 def apply_privacy_blur(

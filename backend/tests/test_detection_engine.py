@@ -75,6 +75,7 @@ def test_selective_privacy_blur() -> None:
         Detection(x=10, y=10, width=40, height=40),
         Detection(x=110, y=10, width=40, height=40),
     ]
-    blurred = apply_privacy_blur(frame, dets, "pixelate", selected_indices=[0])
-    assert not np.array_equal(blurred[10:50, 10:50], frame[10:50, 10:50])
-    assert np.array_equal(blurred[10:50, 110:150], frame[10:50, 110:150])
+    for mode in ("pixelate", "mask", "mesh"):
+        blurred = apply_privacy_blur(frame, dets, mode, selected_indices=[0])
+        assert not np.array_equal(blurred[10:50, 10:50], frame[10:50, 10:50])
+        assert np.array_equal(blurred[10:50, 110:150], frame[10:50, 110:150])

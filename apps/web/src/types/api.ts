@@ -1,4 +1,4 @@
-export type BlurMode = "none" | "gaussian" | "pixelate";
+export type BlurMode = "none" | "gaussian" | "pixelate" | "mask" | "mesh";
 export type ExecutionMode = "local_desktop" | "web_local_agent" | "cloud";
 
 export interface HealthResponse {

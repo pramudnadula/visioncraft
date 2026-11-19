@@ -108,6 +108,8 @@ export function VideoStudioPage() {
                 <option value="none" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">None (Boxes Only)</option>
                 <option value="gaussian" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Gaussian Blur</option>
                 <option value="pixelate" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Pixelate</option>
+          <option value="mask" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Solid Cover (Mask)</option>
+          <option value="mesh" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Privacy Net (Mesh)</option>
               </select>
             </div>
 
