@@ -53,20 +53,30 @@ def blur_face_region(
         )
         frame[y1:y2, x1:x2] = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
     elif mode == "mask":
-        frame[y1:y2, x1:x2] = (15, 15, 15)
+        frame[y1:y2, x1:x2] = (18, 18, 22)
+        cv2.rectangle(frame, (x1, y1), (x2 - 1, y2 - 1), (80, 80, 95), 2)
+        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+        cv2.putText(
+            frame,
+            "COVERED",
+            (max(x1 + 4, cx - 34), cy + 5),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.45,
+            (200, 200, 210),
+            1,
+            cv2.LINE_AA,
+        )
     elif mode == "mesh":
         roi_h, roi_w = roi.shape[:2]
-        small = cv2.resize(
-            roi,
-            (max(1, roi_w // 10), max(1, roi_h // 10)),
-            interpolation=cv2.INTER_LINEAR,
-        )
-        covered = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
-        step = max(8, min(roi_w, roi_h) // 8)
+        kernel_w = max(15, (roi_w // 3) | 1)
+        kernel_h = max(15, (roi_h // 3) | 1)
+        covered = cv2.GaussianBlur(roi, (kernel_w, kernel_h), 0)
+        step = max(10, min(roi_w, roi_h) // 8)
+        net_color = (240, 240, 255)
         for gx in range(0, roi_w, step):
-            cv2.line(covered, (gx, 0), (gx, roi_h), (25, 25, 25), 1)
+            cv2.line(covered, (gx, 0), (gx, roi_h), net_color, 1, cv2.LINE_AA)
         for gy in range(0, roi_h, step):
-            cv2.line(covered, (0, gy), (roi_w, gy), (25, 25, 25), 1)
+            cv2.line(covered, (0, gy), (roi_w, gy), net_color, 1, cv2.LINE_AA)
         frame[y1:y2, x1:x2] = covered
     elif mode == "geometric":
         _draw_geometric_face_mesh(frame, detection, bounds)
@@ -91,13 +101,23 @@ def _draw_geometric_face_mesh(
     img_h, img_w = frame.shape[:2]
     # Base facial geometry control points (normalized to face box)
     rel_points = [
-        (0.50, 0.05), (0.30, 0.08), (0.70, 0.08),  # forehead
-        (0.12, 0.28), (0.88, 0.28),                # temples
-        (0.24, 0.25), (0.38, 0.24), (0.62, 0.24), (0.76, 0.25),  # eyebrows
-        (0.50, 0.35),                              # nose bridge
-        (0.08, 0.50), (0.92, 0.50),                # cheeks
-        (0.14, 0.72), (0.86, 0.72),                # jaw
-        (0.32, 0.88), (0.50, 0.96), (0.68, 0.88),  # chin
+        (0.50, 0.05),
+        (0.30, 0.08),
+        (0.70, 0.08),  # forehead
+        (0.12, 0.28),
+        (0.88, 0.28),  # temples
+        (0.24, 0.25),
+        (0.38, 0.24),
+        (0.62, 0.24),
+        (0.76, 0.25),  # eyebrows
+        (0.50, 0.35),  # nose bridge
+        (0.08, 0.50),
+        (0.92, 0.50),  # cheeks
+        (0.14, 0.72),
+        (0.86, 0.72),  # jaw
+        (0.32, 0.88),
+        (0.50, 0.96),
+        (0.68, 0.88),  # chin
     ]
     pts: list[tuple[float, float]] = [
         (

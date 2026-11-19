@@ -1,4 +1,4 @@
-"""3D Face Mesh & Head Pose Estimation using OpenCV solvePnP + Delaunay depth projection."""
+"""3D Face Mesh & Head Pose Estimation using OpenCV solvePnP + 3D projection."""
 
 from __future__ import annotations
 
@@ -10,15 +10,16 @@ import numpy as np
 
 from backend.app.detection.base import Detection
 
-# Canonical 3D face model points (in mm): nose tip, chin, left eye, right eye, left mouth, right mouth
+# Canonical 3D face model points (in mm, Y-down to match OpenCV image coordinates):
+# nose tip, chin, left eye (viewer's right), right eye (viewer's left), left mouth, right mouth
 _MODEL_3D_POINTS = np.array(
     [
         (0.0, 0.0, 0.0),  # Nose tip
-        (0.0, -330.0, -65.0),  # Chin
-        (-225.0, 170.0, -135.0),  # Left eye corner
-        (225.0, 170.0, -135.0),  # Right eye corner
-        (-150.0, -150.0, -125.0),  # Left mouth corner
-        (150.0, -150.0, -125.0),  # Right mouth corner
+        (0.0, 330.0, -65.0),  # Chin
+        (225.0, -170.0, -135.0),  # Viewer's right eye
+        (-225.0, -170.0, -135.0),  # Viewer's left eye
+        (150.0, 150.0, -125.0),  # Viewer's right mouth corner
+        (-150.0, 150.0, -125.0),  # Viewer's left mouth corner
     ],
     dtype=np.float64,
 )
@@ -40,7 +41,7 @@ def estimate_head_pose_3d(
     x, y, w, h = detection.x, detection.y, max(1, detection.width), max(1, detection.height)
 
     if detection.landmarks and len(detection.landmarks) >= 5:
-        # YuNet/SCRFD order: right_eye, left_eye, nose, right_mouth, left_mouth
+        # YuNet/SCRFD order: right_eye (viewer left), left_eye (viewer right), nose, right_mouth, left_mouth
         r_eye = (detection.landmarks[0].x, detection.landmarks[0].y)
         l_eye = (detection.landmarks[1].x, detection.landmarks[1].y)
         nose = (detection.landmarks[2].x, detection.landmarks[2].y)
@@ -56,7 +57,7 @@ def estimate_head_pose_3d(
         chin = (x + w * 0.50, y + h * 0.96)
 
     image_points = np.array([nose, chin, l_eye, r_eye, l_mouth, r_mouth], dtype=np.float64)
-    focal_length = float(img_w)
+    focal_length = float(max(img_w, img_h))
     center = (img_w / 2.0, img_h / 2.0)
     camera_matrix = np.array(
         [[focal_length, 0, center[0]], [0, focal_length, center[1]], [0, 0, 1]],
@@ -91,34 +92,34 @@ def draw_3d_face_mesh(
     frame: cv2.typing.MatLike,
     detection: Detection,
 ) -> HeadPose3D:
-    """Render a 3D depth-projected facial mesh, 3D head pose axes, and yaw/pitch/roll."""
+    """Render a 3D projected facial mesh, 3D head bounding cube, and pose axes."""
     img_h, img_w = frame.shape[:2]
     pose, rvec, tvec, cam, dist = estimate_head_pose_3d(frame.shape, detection)
 
-    # Project a 3D facial dome/contour grid in model space onto the image
+    # 1. Project 3D facial dome points (Y-down matching _MODEL_3D_POINTS)
     dome_3d = np.array(
         [
-            (0.0, 260.0, -140.0),  # forehead center
-            (-180.0, 230.0, -180.0),  # forehead left
-            (180.0, 230.0, -180.0),  # forehead right
-            (-270.0, 60.0, -240.0),  # temple left
-            (270.0, 60.0, -240.0),  # temple right
-            (-225.0, 170.0, -135.0),  # left eye
-            (225.0, 170.0, -135.0),  # right eye
-            (0.0, 140.0, -40.0),  # nose bridge
+            (0.0, -290.0, -120.0),  # forehead center
+            (-180.0, -260.0, -160.0),  # forehead left
+            (180.0, -260.0, -160.0),  # forehead right
+            (-280.0, -80.0, -220.0),  # temple left
+            (280.0, -80.0, -220.0),  # temple right
+            (-225.0, -170.0, -135.0),  # viewer's left eye
+            (225.0, -170.0, -135.0),  # viewer's right eye
+            (0.0, -130.0, -40.0),  # nose bridge
             (0.0, 0.0, 0.0),  # nose tip
-            (-240.0, -90.0, -200.0),  # cheek left
-            (240.0, -90.0, -200.0),  # cheek right
-            (-150.0, -150.0, -125.0),  # mouth left
-            (150.0, -150.0, -125.0),  # mouth right
-            (0.0, -330.0, -65.0),  # chin
+            (-250.0, 80.0, -190.0),  # cheek left
+            (250.0, 80.0, -190.0),  # cheek right
+            (-150.0, 150.0, -125.0),  # mouth left
+            (150.0, 150.0, -125.0),  # mouth right
+            (0.0, 330.0, -65.0),  # chin
         ],
         dtype=np.float64,
     )
     proj_2d, _ = cv2.projectPoints(dome_3d, rvec, tvec, cam, dist)
-    pts_2d = [(float(p[0][0]), float(p[0][1])) for p in proj_2d]
     clamped = [
-        (min(float(img_w - 2), max(1.0, px)), min(float(img_h - 2), max(1.0, py))) for px, py in pts_2d
+        (min(float(img_w - 2), max(1.0, float(p[0][0]))), min(float(img_h - 2), max(1.0, float(p[0][1]))))
+        for p in proj_2d
     ]
 
     subdiv = cv2.Subdiv2D((0, 0, img_w, img_h))
@@ -136,15 +137,49 @@ def draw_3d_face_mesh(
     for px, py in clamped:
         cv2.circle(frame, (int(px), int(py)), 3, (0, 255, 220), -1, cv2.LINE_AA)
 
-    # Draw 3D orientation axes from nose tip
-    axes_3d = np.array([[180.0, 0.0, 0.0], [0.0, 180.0, 0.0], [0.0, 0.0, 180.0]], dtype=np.float64)
+    # 2. Project 3D bounding cube around head
+    rw, rh, rz_front, rz_back = 310.0, 360.0, 80.0, -340.0
+    cube_3d = np.array(
+        [
+            (-rw, -rh, rz_back),
+            (rw, -rh, rz_back),
+            (rw, rh, rz_back),
+            (-rw, rh, rz_back),
+            (-rw, -rh, rz_front),
+            (rw, -rh, rz_front),
+            (rw, rh, rz_front),
+            (-rw, rh, rz_front),
+        ],
+        dtype=np.float64,
+    )
+    cube_2d, _ = cv2.projectPoints(cube_3d, rvec, tvec, cam, dist)
+    c_pts = [(int(p[0][0]), int(p[0][1])) for p in cube_2d]
+    for i in range(4):
+        cv2.line(frame, c_pts[i], c_pts[(i + 1) % 4], (180, 120, 255), 1, cv2.LINE_AA)
+        cv2.line(frame, c_pts[i + 4], c_pts[((i + 1) % 4) + 4], (255, 180, 80), 2, cv2.LINE_AA)
+        cv2.line(frame, c_pts[i], c_pts[i + 4], (210, 150, 220), 1, cv2.LINE_AA)
+
+    # 3. Draw 3D orientation axes from nose tip
+    axes_3d = np.array([[220.0, 0.0, 0.0], [0.0, 220.0, 0.0], [0.0, 0.0, 220.0]], dtype=np.float64)
     axes_2d, _ = cv2.projectPoints(axes_3d, rvec, tvec, cam, dist)
     nose_pt = (int(clamped[8][0]), int(clamped[8][1]))
-    colors = [(0, 0, 255), (0, 255, 0), (255, 120, 0)]
+    colors = [(0, 0, 255), (0, 255, 0), (255, 140, 0)]
     for axis_pt, col in zip(axes_2d, colors, strict=True):
         end = (int(axis_pt[0][0]), int(axis_pt[0][1]))
         cv2.line(frame, nose_pt, end, col, 2, cv2.LINE_AA)
 
+    # 4. Pose angle label
+    pose_text = f"Yaw:{pose.yaw_deg:+.0f} Pitch:{pose.pitch_deg:+.0f} Roll:{pose.roll_deg:+.0f}"
+    cv2.putText(
+        frame,
+        pose_text,
+        (max(10, detection.x), max(22, detection.y + detection.height + 18)),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (0, 255, 220),
+        1,
+        cv2.LINE_AA,
+    )
     return pose
 
 
