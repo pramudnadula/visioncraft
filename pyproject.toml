@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "face-detector"
+version = "2.0.0"
+description = "Modular real-time face detection CLI and Python library built on OpenCV."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "numpy>=2.0,<3",
+    "opencv-python>=4.10,<5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+face-detect = "face_detector.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
