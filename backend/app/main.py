@@ -21,7 +21,7 @@ from backend.app.database.session import DatabaseManager
 from backend.app.detection.registry import create_default_registry
 from backend.app.jobs.events import JobEventBus
 from backend.app.jobs.manager import JobManager
-from backend.app.storage.local import LocalStorageAdapter
+from backend.app.storage.factory import create_storage_adapter
 
 logger = get_logger("main")
 
@@ -37,7 +37,7 @@ def create_app(custom_settings: Settings | None = None) -> FastAPI:
         db = DatabaseManager(cfg.resolved_database_url)
         db.create_tables()
 
-        storage = LocalStorageAdapter(cfg.resolved_data_dir)
+        storage = create_storage_adapter(cfg)
         registry = create_default_registry(models_dir=cfg.resolved_models_dir)
         event_bus = JobEventBus()
         job_manager = JobManager(

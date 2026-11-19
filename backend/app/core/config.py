@@ -57,14 +57,18 @@ class Settings(BaseSettings):
     execution_mode: ExecutionMode = "web_local_agent"
     allow_cloud_processing: bool = False
     cloud_api_url: str | None = None
-    storage_backend: Literal["local", "s3"] = "local"
+    storage_backend: Literal["local", "s3", "firebase", "gcs"] = "local"
 
-    # Optional S3-compatible storage
+    # Optional S3-compatible storage (AWS S3, Cloudflare R2, MinIO, Backblaze B2, Supabase S3)
     s3_endpoint_url: str | None = None
     s3_bucket: str | None = None
     s3_region: str = "us-east-1"
     s3_access_key: str | None = None
     s3_secret_key: str | None = None
+
+    # Optional Firebase Storage / Google Cloud Storage
+    gcs_bucket: str | None = None
+    firebase_credentials_path: Path | None = None
 
     # Media & processing limits
     max_upload_size_bytes: int = 250 * 1024 * 1024  # 250 MB
