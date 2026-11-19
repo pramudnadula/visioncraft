@@ -104,6 +104,7 @@ class SettingsResponse(BaseModel):
     default_blur_mode: BlurMode
     default_confidence_threshold: float
     allow_cloud_processing: bool
+    cloud_api_url: str | None = None
     retention_days: int
 
 
@@ -112,7 +113,18 @@ class SettingsUpdateRequest(BaseModel):
     default_blur_mode: BlurMode | None = None
     default_confidence_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     allow_cloud_processing: bool | None = None
+    cloud_api_url: str | None = None
     retention_days: int | None = Field(default=None, ge=1, le=3650)
+
+
+class CloudTestRequest(BaseModel):
+    cloud_api_url: str
+
+
+class CloudTestResponse(BaseModel):
+    reachable: bool
+    status_code: int | None = None
+    message: str
 
 
 class DashboardStatsResponse(BaseModel):

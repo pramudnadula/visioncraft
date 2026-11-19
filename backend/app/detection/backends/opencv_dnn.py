@@ -28,7 +28,8 @@ class OpenCVDNNDetector(FaceDetector):
         search_dirs: list[Path] = []
         if self.config.models_dir is not None:
             search_dirs.append(self.config.models_dir)
-        search_dirs.append(PROJECT_ROOT / "models")
+        else:
+            search_dirs.append(PROJECT_ROOT / "models")
 
         for directory in search_dirs:
             proto = directory / DEFAULT_PROTOTXT

@@ -39,8 +39,9 @@ class YuNetDetector(FaceDetector):
         search_dirs: list[Path] = []
         if self.config.models_dir is not None:
             search_dirs.append(self.config.models_dir)
-        search_dirs.append(PROJECT_ROOT / "models")
-        search_dirs.append(PROJECT_ROOT)
+        else:
+            search_dirs.append(PROJECT_ROOT / "models")
+            search_dirs.append(PROJECT_ROOT)
 
         for directory in search_dirs:
             for filename in DEFAULT_YUNET_FILENAMES:
