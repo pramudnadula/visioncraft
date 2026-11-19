@@ -9,8 +9,11 @@ from pydantic import BaseModel, Field
 from backend.app.core.dependencies import AppStateContainer, get_container, require_api_token
 from backend.app.core.exceptions import MediaNotFoundError
 from backend.app.database.models import MediaAsset
+from backend.app.detection.base import DetectorConfig
+from backend.app.vision.faces.mask_detection import FaceMaskClassifier
 from backend.app.vision.objects.detection import VEHICLE_CLASSES, YOLOv8ONNXObjectDetector
 from backend.app.vision.objects.tracking import ObjectTracker
+from backend.app.vision.sign_language.recognition import list_sign_languages
 from backend.app.vision.vehicles.counting import CountingLine, VehicleCounter
 
 router = APIRouter(
@@ -37,15 +40,56 @@ class VehicleCountRequest(BaseModel):
 def get_vision_capabilities(container: AppStateContainer = Depends(get_container)) -> dict[str, object]:
     models_dir = container.settings.resolved_models_dir
     obj_det = YOLOv8ONNXObjectDetector(models_dir=models_dir)
+    mask_clf = FaceMaskClassifier(models_dir=models_dir)
     return {
         "face_detection": True,
+        "face_mask_ready": mask_clf.is_available(),
         "object_detection_ready": obj_det.is_available(),
         "vehicle_analytics_ready": obj_det.is_available(),
+        "sign_languages": list_sign_languages(),
         "object_model_hint": (
             "Place yolov8n.onnx in models/ (or download via Model Hub) to enable "
             "object & vehicle detection."
         ),
     }
+
+
+@router.get("/sign-language/languages")
+def get_sign_languages() -> list[dict[str, object]]:
+    return list_sign_languages()
+
+
+@router.post("/faces/mask-detect")
+def detect_face_masks(
+    payload: ObjectDetectRequest,
+    container: AppStateContainer = Depends(get_container),
+) -> dict[str, object]:
+    with container.db.session_scope() as session:
+        asset = session.get(MediaAsset, payload.media_id)
+        if asset is None:
+            raise MediaNotFoundError(f"Media '{payload.media_id}' not found.")
+        storage_key = asset.storage_key
+
+    local_path = container.storage.resolve_local_path(storage_key)
+    frame = cv2.imread(str(local_path))
+    if frame is None:
+        raise MediaNotFoundError("Could not decode image.")
+
+    face_det = container.registry.create_detector(
+        DetectorConfig(model_id="yunet", models_dir=container.settings.resolved_models_dir)
+        if (container.settings.resolved_models_dir / "face_detection_yunet_2023mar.onnx").is_file()
+        else DetectorConfig(model_id="haar", models_dir=container.settings.resolved_models_dir)
+    )
+    mask_clf = FaceMaskClassifier(
+        models_dir=container.settings.resolved_models_dir,
+        confidence_threshold=payload.confidence_threshold,
+    )
+    try:
+        faces = face_det.detect(frame)
+        return mask_clf.classify_faces(frame, faces)
+    finally:
+        face_det.release()
+        mask_clf.release()
 
 
 @router.post("/objects/detect")

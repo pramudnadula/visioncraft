@@ -15,7 +15,8 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from pydantic import BaseModel
 
 from backend.app.core.dependencies import AppStateContainer, get_container, require_api_token
-from backend.app.core.exceptions import MediaValidationError, StorageError
+from backend.app.core.exceptions import MediaNotFoundError, MediaValidationError, StorageError
+from backend.app.models.compatibility import benchmark_detector, check_environment_compatibility
 from backend.app.schemas.api import ModelInfoResponse
 
 router = APIRouter(prefix="/models", tags=["models"], dependencies=[Depends(require_api_token)])
@@ -40,6 +41,11 @@ class ModelDownloadRequest(BaseModel):
 class CustomModelFile(BaseModel):
     filename: str
     size_bytes: int
+
+
+class BenchmarkRequest(BaseModel):
+    model_id: str
+    iterations: int = 10
 
 
 def _sanitize_model_filename(name: str) -> str:
@@ -172,3 +178,37 @@ def download_model_from_url(
         raise StorageError(f"Failed to download model: {exc}") from exc
 
     return CustomModelFile(filename=filename, size_bytes=total)
+
+
+@router.get("/compatibility")
+def get_environment_compatibility(
+    container: AppStateContainer = Depends(get_container),
+) -> dict[str, object]:
+    return check_environment_compatibility(container.settings.resolved_data_dir)
+
+
+@router.post("/benchmark")
+def run_model_benchmark(
+    payload: BenchmarkRequest,
+    container: AppStateContainer = Depends(get_container),
+) -> dict[str, object]:
+    return benchmark_detector(
+        container.registry,
+        payload.model_id,
+        iterations=min(max(1, payload.iterations), 50),
+    )
+
+
+@router.delete("/custom/{filename}", status_code=204)
+def delete_custom_model(
+    filename: str,
+    container: AppStateContainer = Depends(get_container),
+) -> None:
+    safe_name = _sanitize_model_filename(filename)
+    custom_dir = (container.settings.resolved_models_dir / "custom").resolve()
+    target = (custom_dir / safe_name).resolve()
+    if not target.is_relative_to(custom_dir):
+        raise StorageError("Invalid model filename.")
+    if not target.is_file():
+        raise MediaNotFoundError(f"Custom model '{safe_name}' not found.")
+    target.unlink()
