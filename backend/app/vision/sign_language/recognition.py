@@ -25,6 +25,8 @@ class SignLanguageSpec:
     code: str
     name: str
     model_available: bool
+    pipeline_ready: bool
+    status_label: str
     note: str
 
 
@@ -38,6 +40,10 @@ def _resolve_model(models_dir: Path, filename: str) -> Path | None:
 
 def list_sign_languages(models_dir: Path | None = None) -> list[dict[str, Any]]:
     resolved = models_dir if models_dir is not None else get_settings().resolved_models_dir
+    landmarks_ready = (
+        _resolve_model(resolved, "hand_landmarker.task") is not None
+        and _resolve_model(resolved, "pose_landmarker_lite.task") is not None
+    )
     asl_ready = (
         _resolve_model(resolved, ASL_ONNX_FILENAME) is not None
         or _resolve_model(resolved, GESTURE_TASK_FILENAME) is not None
@@ -50,6 +56,12 @@ def list_sign_languages(models_dir: Path | None = None) -> list[dict[str, Any]]:
             code="ASL",
             name="American Sign Language",
             model_available=asl_ready,
+            pipeline_ready=landmarks_ready or asl_ready,
+            status_label=(
+                "Ready"
+                if asl_ready
+                else ("Landmarks Ready" if landmarks_ready else "Model Required")
+            ),
             note=(
                 "Enabled via asl_yolo11n.onnx (A-Y letters) & gesture_recognizer.task."
                 if asl_ready
@@ -60,20 +72,38 @@ def list_sign_languages(models_dir: Path | None = None) -> list[dict[str, Any]]:
             code="FinSL",
             name="Finnish Sign Language",
             model_available=finsl_ready,
+            pipeline_ready=landmarks_ready,
+            status_label=(
+                "Ready"
+                if finsl_ready
+                else ("Landmarks Ready" if landmarks_ready else "Model Required")
+            ),
             note=(
                 "Enabled via finsl_sign.onnx."
                 if finsl_ready
-                else "No public FinSL ONNX model bundled; place finsl_sign.onnx in models/."
+                else (
+                    "Hand/pose landmark pipeline ready; add finsl_sign.onnx in models/ "
+                    "for vocabulary classification."
+                )
             ),
         ),
         SignLanguageSpec(
             code="BSL",
             name="British Sign Language",
             model_available=bsl_ready,
+            pipeline_ready=landmarks_ready,
+            status_label=(
+                "Ready"
+                if bsl_ready
+                else ("Landmarks Ready" if landmarks_ready else "Model Required")
+            ),
             note=(
                 "Enabled via bsl_sign.onnx."
                 if bsl_ready
-                else "No public BSL ONNX model bundled; place bsl_sign.onnx in models/."
+                else (
+                    "Hand/pose landmark pipeline ready; add bsl_sign.onnx in models/ "
+                    "for vocabulary classification."
+                )
             ),
         ),
     )
@@ -82,6 +112,8 @@ def list_sign_languages(models_dir: Path | None = None) -> list[dict[str, Any]]:
             "code": s.code,
             "name": s.name,
             "model_available": s.model_available,
+            "pipeline_ready": s.pipeline_ready,
+            "status_label": s.status_label,
             "note": s.note,
         }
         for s in specs

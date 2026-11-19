@@ -159,10 +159,18 @@ export function VisionStudioPage() {
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-2 text-xs">
               <div className="font-semibold text-sm">Sign Language Registry</div>
               {caps.sign_languages.map((sl) => (
-                <div key={sl.code} className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                <div key={sl.code} title={sl.note} className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                   <span>{sl.code} ({sl.name})</span>
-                  <span className={sl.model_available ? "text-emerald-500 font-medium" : "text-amber-500"}>
-                    {sl.model_available ? "Ready" : "Model Required"}
+                  <span
+                    className={
+                      sl.model_available
+                        ? "text-emerald-500 font-medium"
+                        : sl.pipeline_ready
+                        ? "text-sky-400 font-medium"
+                        : "text-amber-500"
+                    }
+                  >
+                    {sl.status_label ?? (sl.model_available ? "Ready" : "Model Required")}
                   </span>
                 </div>
               ))}

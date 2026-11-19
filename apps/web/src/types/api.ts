@@ -254,6 +254,8 @@ export interface VisionCapabilities {
     code: string;
     name: string;
     model_available: boolean;
+    pipeline_ready?: boolean;
+    status_label?: string;
     note: string;
   }>;
   object_model_hint: string;
