@@ -15,7 +15,8 @@ test:
 	$(PYTEST) -v
 
 demo:
-	$(CLI) --image RDJ.png --blur gaussian --output output/RDJ_blurred.png --export-json output/rdj.json --no-show
+	@if [ -z "$(IMAGE)" ]; then echo "Usage: make demo IMAGE=path/to/image.jpg"; exit 1; fi
+	$(CLI) --image "$(IMAGE)" --blur gaussian --output output/blurred.png --export-json output/report.json --no-show
 
 clean:
 	rm -rf output build dist *.egg-info .pytest_cache

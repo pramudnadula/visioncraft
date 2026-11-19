@@ -19,5 +19,5 @@ npm run build
 ## Backward-Compatible CLI
 
 ```bash
-face-detect --image RDJ.png --blur gaussian --output output/RDJ_blurred.png --no-show
+face-detect --image path/to/image.jpg --blur gaussian --output output/blurred.png --no-show
 ```
