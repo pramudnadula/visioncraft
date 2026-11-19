@@ -61,13 +61,34 @@ class HaarCascadeDetector(FaceDetector):
             return []
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        raw_faces = self._classifier.detectMultiScale(
+        gray = cv2.equalizeHist(gray)
+        min_neighbors = max(6, self.config.min_neighbors)
+        raw_faces, _reject_levels, level_weights = self._classifier.detectMultiScale3(
             gray,
             scaleFactor=self.config.scale_factor,
-            minNeighbors=self.config.min_neighbors,
+            minNeighbors=min_neighbors,
             minSize=self.config.min_face_size,
+            outputRejectLevels=True,
         )
-        return [Detection(x=int(x), y=int(y), width=int(w), height=int(h)) for (x, y, w, h) in raw_faces]
+        if len(raw_faces) == 0:
+            return []
+
+        detections: list[Detection] = []
+        for idx, (x, y, w, h) in enumerate(raw_faces):
+            raw_weight = float(level_weights[idx]) if idx < len(level_weights) else 0.0
+            confidence = round(min(0.99, max(0.0, raw_weight / 6.0)), 4)
+            if confidence < self.config.confidence_threshold:
+                continue
+            detections.append(
+                Detection(
+                    x=int(x),
+                    y=int(y),
+                    width=int(w),
+                    height=int(h),
+                    confidence=confidence,
+                )
+            )
+        return detections
 
     def get_metadata(self) -> DetectorMetadata:
         available = self.is_available()
@@ -76,7 +97,7 @@ class HaarCascadeDetector(FaceDetector):
             name="Haar Cascade (Frontal Face)",
             version="OpenCV-4.x",
             description="Classic CPU-fast Viola-Jones Haar Cascade frontal face detector.",
-            supports_confidence=False,
+            supports_confidence=True,
             supports_landmarks=False,
             supports_gpu=False,
             gpu_active=False,

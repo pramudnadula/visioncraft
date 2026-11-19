@@ -32,6 +32,25 @@ def test_haar_detector_lifecycle_and_detection() -> None:
     assert detector._classifier is None
 
 
+def test_haar_detector_rejects_document_like_image_without_faces() -> None:
+    import cv2
+
+    detector = HaarCascadeDetector(DetectorConfig(model_id="haar", confidence_threshold=0.6))
+    detector.initialize()
+    # Create an invoice-like white page with dark borders, table lines, and text blocks
+    doc = np.full((600, 450, 3), 255, dtype=np.uint8)
+    cv2.rectangle(doc, (30, 30), (420, 570), (20, 20, 20), 2)
+    for y in range(80, 520, 35):
+        cv2.line(doc, (45, y), (405, y), (60, 60, 60), 1)
+        cv2.putText(
+            doc, "INVOICE ITEM #12345  $99.00", (55, y - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (10, 10, 10), 1
+        )
+
+    detections = detector.detect(doc)
+    assert detections == []
+    detector.release()
+
+
 def test_registry_lists_models_and_rejects_missing_weights(tmp_path: Path) -> None:
     registry = create_default_registry(models_dir=tmp_path)
     models = registry.list_models()
