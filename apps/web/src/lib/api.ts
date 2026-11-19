@@ -33,8 +33,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     let msg = `Request failed (${res.status})`;
     try {
-      const err = (await res.json()) as { message?: string; detail?: string };
-      msg = err.message || err.detail || msg;
+      const err = (await res.json()) as {
+        message?: string;
+        detail?: string | Array<{ msg?: string; loc?: Array<string | number> }>;
+      };
+      if (typeof err.message === "string" && err.message) {
+        msg = err.message;
+      } else if (typeof err.detail === "string" && err.detail) {
+        msg = err.detail;
+      } else if (Array.isArray(err.detail) && err.detail.length > 0) {
+        msg = err.detail
+          .map((d) => {
+            const loc = Array.isArray(d.loc) ? d.loc.join(".") : "";
+            return loc ? `${loc}: ${d.msg ?? "Invalid value"}` : (d.msg ?? "Validation error");
+          })
+          .join("; ");
+      }
     } catch {
       // ignore JSON parse error
     }
