@@ -136,3 +136,35 @@ def test_3d_face_mesh_and_head_pose() -> None:
     res = analyze_faces_3d(frame, [det])
     assert res["face_count"] == 1
     assert len(res["faces"][0]["landmarks_3d"]) == 6
+
+
+def test_pose_landmark_detector_with_tasks_model() -> None:
+    from pathlib import Path
+
+    from backend.app.vision.pose.detection import PoseLandmarkDetector
+
+    models_dir = Path("models")
+    if not PoseLandmarkDetector.is_available(models_dir):
+        return
+    frame = np.zeros((240, 320, 3), dtype=np.uint8)
+    res = PoseLandmarkDetector(models_dir=models_dir).detect(frame)
+    assert res["pose_detected"] is False
+    assert res["landmarks"] == []
+    assert res["model"] == "pose_landmarker_lite.task"
+
+
+def test_privacy_modes_produce_distinct_outputs() -> None:
+    from backend.app.detection.base import Detection
+    from backend.app.privacy.blur import apply_privacy_blur
+
+    rng = np.random.default_rng(42)
+    frame = rng.integers(30, 220, size=(240, 240, 3), dtype=np.uint8)
+    det = Detection(x=40, y=30, width=140, height=160, confidence=0.95)
+
+    outputs = {}
+    for mode in ("none", "gaussian", "pixelate", "mask", "mesh", "geometric", "mesh_3d"):
+        out = apply_privacy_blur(frame, [det], mode)  # type: ignore[arg-type]
+        assert out.shape == frame.shape
+        outputs[mode] = out.tobytes()
+
+    assert len(set(outputs.values())) == 7

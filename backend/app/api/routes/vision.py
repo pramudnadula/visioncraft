@@ -57,7 +57,7 @@ def get_vision_capabilities(container: AppStateContainer = Depends(get_container
         "facial_analysis_ready": mesh_status(models_dir)["available"],
         "face_mesh_ready": mesh_status(models_dir)["available"],
         "hand_landmarks_ready": HandLandmarkDetector.is_available(),
-        "pose_estimation_ready": PoseLandmarkDetector.is_available(),
+        "pose_estimation_ready": PoseLandmarkDetector.is_available(models_dir),
         "object_detection_ready": obj_det.is_available(),
         "vehicle_analytics_ready": obj_det.is_available(),
         "sign_languages": list_sign_languages(),
@@ -161,7 +161,7 @@ def detect_pose_landmarks(
     container: AppStateContainer = Depends(get_container),
 ) -> dict[str, object]:
     frame = _load_media_frame(container, payload.media_id)
-    return PoseLandmarkDetector().detect(frame)
+    return PoseLandmarkDetector(models_dir=container.settings.resolved_models_dir).detect(frame)
 
 
 @router.post("/faces/mesh-3d")
@@ -177,7 +177,11 @@ def analyze_3d_face_mesh(
     )
     try:
         faces = face_det.detect(frame)
-        return analyze_faces_3d(frame, faces)
+        return analyze_faces_3d(
+            frame,
+            faces,
+            models_dir=container.settings.resolved_models_dir,
+        )
     finally:
         face_det.release()
 

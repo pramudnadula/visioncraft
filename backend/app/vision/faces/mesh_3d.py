@@ -88,15 +88,85 @@ def estimate_head_pose_3d(
     )
 
 
+def _draw_pose_axes(
+    frame: cv2.typing.MatLike,
+    nose_pt: tuple[int, int],
+    pose: HeadPose3D,
+    size: float = 65.0,
+) -> None:
+    """Draw 3D XYZ orientation axes anchored at the nose tip from Euler angles."""
+    pitch = np.deg2rad(pose.pitch_deg)
+    yaw = np.deg2rad(-pose.yaw_deg)
+    roll = np.deg2rad(pose.roll_deg)
+
+    rx = np.array([[1, 0, 0], [0, np.cos(pitch), -np.sin(pitch)], [0, np.sin(pitch), np.cos(pitch)]])
+    ry = np.array([[np.cos(yaw), 0, np.sin(yaw)], [0, 1, 0], [-np.sin(yaw), 0, np.cos(yaw)]])
+    rz = np.array([[np.cos(roll), -np.sin(roll), 0], [np.sin(roll), np.cos(roll), 0], [0, 0, 1]])
+    rot = rz @ ry @ rx
+
+    axes = np.eye(3, dtype=np.float64) @ rot.T * size
+    colors = ((0, 0, 255), (0, 255, 0), (255, 140, 0))  # X=Red, Y=Green, Z=Blue
+    for vec, col in zip(axes, colors, strict=True):
+        end = (int(nose_pt[0] + vec[0]), int(nose_pt[1] + vec[1]))
+        cv2.line(frame, nose_pt, end, col, 2, cv2.LINE_AA)
+
+
 def draw_3d_face_mesh(
     frame: cv2.typing.MatLike,
     detection: Detection,
+    *,
+    mesh_face: Any | None = None,
 ) -> HeadPose3D:
-    """Render a 3D projected facial mesh, 3D head bounding cube, and pose axes."""
+    """Render a 3D facial mesh and head pose axes (MediaPipe 478-pt primary, solvePnP fallback)."""
+    if mesh_face is None:
+        from backend.app.vision.faces.segmentation import build_face_privacy_context
+
+        ctx = build_face_privacy_context(frame, need_segmentation=False, need_mesh=True)
+        mesh_face = ctx.match_mesh(detection)
+
+    if mesh_face is not None:
+        from backend.app.vision.faces.face_mesh import FaceMeshSettings, render_face_mesh
+
+        render_face_mesh(
+            frame,
+            [mesh_face],
+            FaceMeshSettings.from_preset("full_mesh", opacity=0.75, thickness=1),
+        )
+        hp = mesh_face.head_pose
+        if hp is not None:
+            pose = HeadPose3D(
+                yaw_deg=float(hp["yaw_deg"]),
+                pitch_deg=float(hp["pitch_deg"]),
+                roll_deg=float(hp["roll_deg"]),
+            )
+        else:
+            pose, *_ = estimate_head_pose_3d(frame.shape, detection)
+
+        nose_xy = mesh_face.landmarks_px[1] if mesh_face.landmarks_px.shape[0] > 1 else None
+        nose_pt = (
+            (int(nose_xy[0]), int(nose_xy[1]))
+            if nose_xy is not None
+            else (detection.x + detection.width // 2, detection.y + detection.height // 2)
+        )
+        _draw_pose_axes(frame, nose_pt, pose, size=max(40.0, detection.width * 0.45))
+
+        pose_text = f"Yaw:{pose.yaw_deg:+.0f} Pitch:{pose.pitch_deg:+.0f} Roll:{pose.roll_deg:+.0f}"
+        cv2.putText(
+            frame,
+            pose_text,
+            (max(10, detection.x), max(22, detection.y + detection.height + 18)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 255, 220),
+            1,
+            cv2.LINE_AA,
+        )
+        return pose
+
     img_h, img_w = frame.shape[:2]
     pose, rvec, tvec, cam, dist = estimate_head_pose_3d(frame.shape, detection)
 
-    # 1. Project 3D facial dome points (Y-down matching _MODEL_3D_POINTS)
+    # Fallback: Project 3D facial dome points (Y-down matching _MODEL_3D_POINTS)
     dome_3d = np.array(
         [
             (0.0, -290.0, -120.0),  # forehead center
@@ -137,7 +207,7 @@ def draw_3d_face_mesh(
     for px, py in clamped:
         cv2.circle(frame, (int(px), int(py)), 3, (0, 255, 220), -1, cv2.LINE_AA)
 
-    # 2. Project 3D bounding cube around head
+    # Project 3D bounding cube around head
     rw, rh, rz_front, rz_back = 310.0, 360.0, 80.0, -340.0
     cube_3d = np.array(
         [
@@ -159,7 +229,7 @@ def draw_3d_face_mesh(
         cv2.line(frame, c_pts[i + 4], c_pts[((i + 1) % 4) + 4], (255, 180, 80), 2, cv2.LINE_AA)
         cv2.line(frame, c_pts[i], c_pts[i + 4], (210, 150, 220), 1, cv2.LINE_AA)
 
-    # 3. Draw 3D orientation axes from nose tip
+    # Draw 3D orientation axes from nose tip
     axes_3d = np.array([[220.0, 0.0, 0.0], [0.0, 220.0, 0.0], [0.0, 0.0, 220.0]], dtype=np.float64)
     axes_2d, _ = cv2.projectPoints(axes_3d, rvec, tvec, cam, dist)
     nose_pt = (int(clamped[8][0]), int(clamped[8][1]))
@@ -168,7 +238,7 @@ def draw_3d_face_mesh(
         end = (int(axis_pt[0][0]), int(axis_pt[0][1]))
         cv2.line(frame, nose_pt, end, col, 2, cv2.LINE_AA)
 
-    # 4. Pose angle label
+    # Pose angle label
     pose_text = f"Yaw:{pose.yaw_deg:+.0f} Pitch:{pose.pitch_deg:+.0f} Roll:{pose.roll_deg:+.0f}"
     cv2.putText(
         frame,
@@ -183,10 +253,57 @@ def draw_3d_face_mesh(
     return pose
 
 
-def analyze_faces_3d(frame: cv2.typing.MatLike, detections: list[Detection]) -> dict[str, Any]:
-    """Return 3D head pose and projected 3D mesh points for all detected faces."""
+def analyze_faces_3d(
+    frame: cv2.typing.MatLike,
+    detections: list[Detection],
+    *,
+    models_dir: Any | None = None,
+) -> dict[str, Any]:
+    """Return 3D head pose and 3D landmarks for all detected faces."""
+    from backend.app.vision.faces.segmentation import build_face_privacy_context
+
+    ctx = build_face_privacy_context(
+        frame,
+        models_dir=models_dir,
+        need_segmentation=False,
+        need_mesh=True,
+    )
     faces: list[dict[str, Any]] = []
+    if ctx.mesh_faces and not detections:
+        for idx, mf in enumerate(ctx.mesh_faces):
+            hp = mf.head_pose or {"yaw_deg": 0.0, "pitch_deg": 0.0, "roll_deg": 0.0}
+            faces.append(
+                {
+                    "face_index": idx,
+                    "model": "face_landmarker.task",
+                    "landmark_count": int(mf.landmarks_px.shape[0]),
+                    "head_pose": hp,
+                    "landmarks_3d": [
+                        {"x": round(float(x), 2), "y": round(float(y), 2), "z": round(float(z), 4)}
+                        for (x, y), z in zip(mf.landmarks_px, mf.landmarks_z, strict=True)
+                    ],
+                }
+            )
+        return {"face_count": len(faces), "faces": faces}
+
     for idx, det in enumerate(detections):
+        matched_mf = ctx.match_mesh(det)
+        if matched_mf is not None:
+            hp = matched_mf.head_pose or {"yaw_deg": 0.0, "pitch_deg": 0.0, "roll_deg": 0.0}
+            faces.append(
+                {
+                    "face_index": idx,
+                    "model": "face_landmarker.task",
+                    "landmark_count": int(matched_mf.landmarks_px.shape[0]),
+                    "head_pose": hp,
+                    "landmarks_3d": [
+                        {"x": round(float(x), 2), "y": round(float(y), 2), "z": round(float(z), 4)}
+                        for (x, y), z in zip(matched_mf.landmarks_px, matched_mf.landmarks_z, strict=True)
+                    ],
+                }
+            )
+            continue
+
         pose, rvec, tvec, cam, dist = estimate_head_pose_3d(frame.shape, det)
         proj, _ = cv2.projectPoints(_MODEL_3D_POINTS, rvec, tvec, cam, dist)
         landmarks_3d = [
@@ -200,6 +317,8 @@ def analyze_faces_3d(frame: cv2.typing.MatLike, detections: list[Detection]) -> 
         faces.append(
             {
                 "face_index": idx,
+                "model": "opencv_solvepnp_fallback",
+                "landmark_count": len(landmarks_3d),
                 "head_pose": {
                     "yaw_deg": pose.yaw_deg,
                     "pitch_deg": pose.pitch_deg,

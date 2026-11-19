@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import Literal, get_args
+from typing import TYPE_CHECKING, Literal, get_args
 
 import cv2
+import numpy as np
 
 from backend.app.detection.base import Detection
+
+if TYPE_CHECKING:
+    from backend.app.vision.faces.segmentation import FacePrivacyContext
 
 BlurMode = Literal["none", "gaussian", "pixelate", "mask", "mesh", "geometric", "mesh_3d"]
 PRIVACY_MODES: tuple[str, ...] = get_args(BlurMode)
@@ -32,12 +36,27 @@ def _clip_roi(frame: cv2.typing.MatLike, detection: Detection) -> tuple[int, int
     return x1, y1, x2, y2
 
 
+def _blend_roi(
+    frame: cv2.typing.MatLike,
+    bounds: tuple[int, int, int, int],
+    effect_roi: cv2.typing.MatLike,
+    alpha: np.ndarray,
+) -> None:
+    """Alpha-blend ``effect_roi`` into ``frame`` inside ``bounds`` using soft mask ``alpha``."""
+    x1, y1, x2, y2 = bounds
+    base = frame[y1:y2, x1:x2].astype(np.float32)
+    blended = effect_roi.astype(np.float32) * alpha + base * (1.0 - alpha)
+    frame[y1:y2, x1:x2] = np.clip(blended, 0, 255).astype(np.uint8)
+
+
 def blur_face_region(
     frame: cv2.typing.MatLike,
     detection: Detection,
     mode: BlurMode,
+    *,
+    context: FacePrivacyContext | None = None,
 ) -> None:
-    """Blur or pixelate a single detected face region in-place."""
+    """Apply real-world contoured privacy anonymization or 3D mesh to a detected face."""
     if mode == "none":
         return
 
@@ -47,51 +66,105 @@ def blur_face_region(
 
     x1, y1, x2, y2 = bounds
     roi = frame[y1:y2, x1:x2]
+    roi_h, roi_w = roi.shape[:2]
+
+    if context is None and mode in {"gaussian", "pixelate", "mask", "mesh", "geometric", "mesh_3d"}:
+        from backend.app.vision.faces.segmentation import build_face_privacy_context
+
+        context = build_face_privacy_context(
+            frame,
+            need_segmentation=mode in {"gaussian", "pixelate", "mask", "mesh"},
+            need_mesh=True,
+        )
+
+    mesh_face = context.match_mesh(detection) if context is not None else None
 
     if mode == "gaussian":
-        kernel_w = max(15, ((x2 - x1) // 3) | 1)
-        kernel_h = max(15, ((y2 - y1) // 3) | 1)
-        frame[y1:y2, x1:x2] = cv2.GaussianBlur(roi, (kernel_w, kernel_h), 0)
+        kernel_w = max(15, (roi_w // 3) | 1)
+        kernel_h = max(15, (roi_h // 3) | 1)
+        blurred = cv2.GaussianBlur(roi, (kernel_w, kernel_h), 0)
+        assert context is not None
+        alpha = context.build_roi_alpha(frame.shape, detection, bounds, mesh_face=mesh_face)
+        _blend_roi(frame, bounds, blurred, alpha)
     elif mode == "pixelate":
-        roi_h, roi_w = roi.shape[:2]
         small = cv2.resize(
             roi,
             (max(1, roi_w // 12), max(1, roi_h // 12)),
             interpolation=cv2.INTER_LINEAR,
         )
-        frame[y1:y2, x1:x2] = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
+        pixelated = cv2.resize(small, (roi_w, roi_h), interpolation=cv2.INTER_NEAREST)
+        assert context is not None
+        alpha = context.build_roi_alpha(frame.shape, detection, bounds, mesh_face=mesh_face)
+        _blend_roi(frame, bounds, pixelated, alpha)
     elif mode == "mask":
-        frame[y1:y2, x1:x2] = (18, 18, 22)
-        cv2.rectangle(frame, (x1, y1), (x2 - 1, y2 - 1), (80, 80, 95), 2)
-        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-        cv2.putText(
-            frame,
-            "COVERED",
-            (max(x1 + 4, cx - 34), cy + 5),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
-            (200, 200, 210),
-            1,
-            cv2.LINE_AA,
-        )
+        # Real-world anatomical privacy shield contoured to the face silhouette
+        assert context is not None
+        alpha = context.build_roi_alpha(frame.shape, detection, bounds, mesh_face=mesh_face)
+        shield = np.full_like(roi, (24, 26, 34))
+        # Subtle gradient + visor highlight across upper-face eye line
+        visor_y1 = int(roi_h * 0.28)
+        visor_y2 = int(roi_h * 0.48)
+        if visor_y2 > visor_y1:
+            shield[visor_y1:visor_y2, :] = (36, 42, 58)
+        _blend_roi(frame, bounds, shield, alpha * 0.96)
+        # Draw crisp contoured rim around the mask
+        mask_u8 = (alpha[:, :, 0] > 0.35).astype(np.uint8) * 255
+        contours, _ = cv2.findContours(mask_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        shifted = [c + np.array([[[x1, y1]]], dtype=np.int32) for c in contours]
+        cv2.drawContours(frame, shifted, -1, (190, 165, 95), 2, cv2.LINE_AA)
     elif mode == "mesh":
-        roi_h, roi_w = roi.shape[:2]
+        # Real-world 3D-contoured privacy net: blur identity underneath + 3D mesh overlay
         kernel_w = max(15, (roi_w // 3) | 1)
         kernel_h = max(15, (roi_h // 3) | 1)
-        covered = cv2.GaussianBlur(roi, (kernel_w, kernel_h), 0)
-        step = max(10, min(roi_w, roi_h) // 8)
-        net_color = (240, 240, 255)
-        for gx in range(0, roi_w, step):
-            cv2.line(covered, (gx, 0), (gx, roi_h), net_color, 1, cv2.LINE_AA)
-        for gy in range(0, roi_h, step):
-            cv2.line(covered, (0, gy), (roi_w, gy), net_color, 1, cv2.LINE_AA)
-        frame[y1:y2, x1:x2] = covered
+        blurred = cv2.GaussianBlur(roi, (kernel_w, kernel_h), 0)
+        assert context is not None
+        alpha = context.build_roi_alpha(frame.shape, detection, bounds, mesh_face=mesh_face)
+        _blend_roi(frame, bounds, blurred, alpha)
+        if mesh_face is not None:
+            from backend.app.vision.faces.face_mesh import FaceMeshSettings, render_face_mesh
+
+            render_face_mesh(
+                frame,
+                [mesh_face],
+                FaceMeshSettings.from_preset(
+                    "full_mesh",
+                    color="#E2E8F0",
+                    feature_color="#38BDF8",
+                    opacity=0.82,
+                    thickness=1,
+                ),
+            )
+        else:
+            # Contoured geodesic net fallback clipped to the face silhouette
+            net = roi.copy()
+            step = max(10, min(roi_w, roi_h) // 8)
+            for gx in range(0, roi_w, step):
+                cv2.line(net, (gx, 0), (gx, roi_h), (226, 232, 240), 1, cv2.LINE_AA)
+            for gy in range(0, roi_h, step):
+                cv2.line(net, (0, gy), (roi_w, gy), (226, 232, 240), 1, cv2.LINE_AA)
+            _blend_roi(frame, bounds, net, alpha * 0.75)
     elif mode == "geometric":
-        _draw_geometric_face_mesh(frame, detection, bounds)
+        if mesh_face is not None:
+            from backend.app.vision.faces.face_mesh import FaceMeshSettings, render_face_mesh
+
+            render_face_mesh(
+                frame,
+                [mesh_face],
+                FaceMeshSettings.from_preset(
+                    "contours",
+                    color="#00E5FF",
+                    feature_color="#FFD400",
+                    opacity=0.9,
+                    thickness=1,
+                    show_landmarks=True,
+                ),
+            )
+        else:
+            _draw_geometric_face_mesh(frame, detection, bounds)
     elif mode == "mesh_3d":
         from backend.app.vision.faces.mesh_3d import draw_3d_face_mesh
 
-        draw_3d_face_mesh(frame, detection)
+        draw_3d_face_mesh(frame, detection, mesh_face=mesh_face)
 
 
 def _draw_geometric_face_mesh(
@@ -179,13 +252,25 @@ def apply_privacy_blur(
     idx_set = set(selected_indices) if selected_indices is not None else None
     tid_set = set(selected_tracking_ids) if selected_tracking_ids is not None else None
 
+    from backend.app.vision.faces.segmentation import build_face_privacy_context
+
+    context = (
+        build_face_privacy_context(
+            frame,
+            need_segmentation=mode in {"gaussian", "pixelate", "mask", "mesh"},
+            need_mesh=True,
+        )
+        if detections
+        else None
+    )
+
     for idx, det in enumerate(detections):
         if idx_set is not None or tid_set is not None:
             match_idx = idx_set is not None and idx in idx_set
             match_tid = tid_set is not None and det.tracking_id is not None and det.tracking_id in tid_set
             if not (match_idx or match_tid):
                 continue
-        blur_face_region(result, det, mode)
+        blur_face_region(result, det, mode, context=context)
 
     return result
 
