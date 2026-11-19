@@ -219,3 +219,25 @@ def test_video_and_batch_jobs_and_websocket_webcam(tmp_path: Path) -> None:
             assert "face_count" in msg
             assert "latency_ms" in msg
             assert msg["annotated_frame"].startswith("data:image/jpeg;base64,")
+
+
+def test_custom_model_import_and_listing(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path / "data", models_dir=tmp_path / "models")
+    app = create_app(custom_settings=settings)
+    with TestClient(app) as client:
+        imp = client.post(
+            "/api/v1/models/import",
+            files={"file": ("custom_face.onnx", b"fake-onnx-weights", "application/octet-stream")},
+        )
+        assert imp.status_code == 201
+        assert imp.json()["filename"] == "custom_face.onnx"
+
+        listed = client.get("/api/v1/models/custom")
+        assert listed.status_code == 200
+        assert any(m["filename"] == "custom_face.onnx" for m in listed.json())
+
+        bad = client.post(
+            "/api/v1/models/import",
+            files={"file": ("bad.exe", b"nope", "application/octet-stream")},
+        )
+        assert bad.status_code == 400

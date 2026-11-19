@@ -1,12 +1,14 @@
 import type {
   CapabilitiesResponse,
   CloudTestResponse,
+  CustomModelFile,
   DashboardStats,
   HealthResponse,
   JobCreateRequest,
   JobResponse,
   MediaAsset,
   ModelInfo,
+  ModelSearchResult,
   SettingsData,
 } from "../types/api";
 
@@ -65,6 +67,20 @@ export const api = {
   capabilities: () => request<CapabilitiesResponse>("/capabilities"),
   stats: () => request<DashboardStats>("/stats"),
   models: () => request<ModelInfo[]>("/models"),
+  listCustomModels: () => request<CustomModelFile[]>("/models/custom"),
+  searchModels: (q: string) =>
+    request<ModelSearchResult[]>(`/models/search?q=${encodeURIComponent(q)}`),
+  downloadModel: (url: string, filename?: string) =>
+    request<CustomModelFile>("/models/download", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, filename }),
+    }),
+  importModel: async (file: File): Promise<CustomModelFile> => {
+    const form = new FormData();
+    form.append("file", file);
+    return request<CustomModelFile>("/models/import", { method: "POST", body: form });
+  },
   getSettings: () => request<SettingsData>("/settings"),
   updateSettings: (payload: Partial<SettingsData>) =>
     request<SettingsData>("/settings", {

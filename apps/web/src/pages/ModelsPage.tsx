@@ -1,16 +1,84 @@
-import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Cpu, XCircle } from "lucide-react";
+import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { CheckCircle2, Cpu, Download, ExternalLink, Search, Upload, XCircle } from "lucide-react";
 import { api } from "../lib/api";
+import type { ModelSearchResult } from "../types/api";
 
 export function ModelsPage() {
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { data: models, isLoading } = useQuery({ queryKey: ["models"], queryFn: api.models });
+  const { data: customModels } = useQuery({
+    queryKey: ["custom-models"],
+    queryFn: api.listCustomModels,
+  });
+
+  const [searchQuery, setSearchQuery] = useState("face detection");
+  const [searchResults, setSearchResults] = useState<ModelSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const [downloadUrl, setDownloadUrl] = useState("");
+  const [downloading, setDownloading] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setErrorMsg(null);
+    setSearching(true);
+    try {
+      const results = await api.searchModels(searchQuery.trim());
+      setSearchResults(results);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Search failed");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleDownload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!downloadUrl.trim()) return;
+    setErrorMsg(null);
+    setStatusMsg(null);
+    setDownloading(true);
+    try {
+      const res = await api.downloadModel(downloadUrl.trim());
+      setStatusMsg(`Downloaded ${res.filename} (${(res.size_bytes / 1024 / 1024).toFixed(2)} MB).`);
+      setDownloadUrl("");
+      await queryClient.invalidateQueries({ queryKey: ["custom-models"] });
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleImport = async (file: File | undefined) => {
+    if (!file) return;
+    setErrorMsg(null);
+    setStatusMsg(null);
+    setImporting(true);
+    try {
+      const res = await api.importModel(file);
+      setStatusMsg(`Imported ${res.filename} (${(res.size_bytes / 1024 / 1024).toFixed(2)} MB).`);
+      await queryClient.invalidateQueries({ queryKey: ["custom-models"] });
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Model Management</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Available local detection backends and optional ONNX model adapters.
+          Built-in detectors plus deep learning ONNX search, download, and local import.
         </p>
       </div>
 
@@ -34,7 +102,7 @@ export function ModelsPage() {
                   </div>
                 </div>
                 {m.available ? (
-                  <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
+                  <span className="inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">
                     <CheckCircle2 className="h-3.5 w-3.5" /> Ready
                   </span>
                 ) : (
@@ -59,7 +127,7 @@ export function ModelsPage() {
               </div>
 
               {m.unavailable_reason && (
-                <div className="text-xs text-amber-400 bg-amber-500/10 rounded-lg p-2.5">
+                <div className="text-xs text-amber-500 bg-amber-500/10 rounded-lg p-2.5">
                   {m.unavailable_reason}
                 </div>
               )}
@@ -67,6 +135,120 @@ export function ModelsPage() {
           ))}
         </div>
       )}
+
+      {/* Search, Download & Import Deep Learning Models */}
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Deep Learning ONNX Hub — Search, Download &amp; Import</h2>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              Search HuggingFace ONNX repositories, download from HTTPS, or import a local `.onnx` file.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={importing}
+            onClick={() => fileInputRef.current?.click()}
+            className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-medium inline-flex items-center gap-1.5"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            {importing ? "Importing..." : "Import Local .onnx"}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".onnx,.xml,.prototxt,.caffemodel"
+            className="hidden"
+            onChange={(e) => {
+              void handleImport(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+        </div>
+
+        <form onSubmit={handleDownload} className="flex flex-wrap gap-2">
+          <input
+            type="url"
+            value={downloadUrl}
+            onChange={(e) => setDownloadUrl(e.target.value)}
+            placeholder="https://huggingface.co/.../resolve/main/model.onnx"
+            className="flex-1 min-w-[260px] rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={!downloadUrl.trim() || downloading}
+            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white text-xs font-semibold inline-flex items-center gap-1.5"
+          >
+            <Download className="h-3.5 w-3.5" />
+            {downloading ? "Downloading..." : "Download to models/custom/"}
+          </button>
+        </form>
+
+        <form onSubmit={handleSearch} className="flex gap-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search HuggingFace ONNX models (e.g. face detection, scrfd, yolov8-face)..."
+            className="flex-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-transparent px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={searching}
+            className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold inline-flex items-center gap-1.5"
+          >
+            <Search className="h-3.5 w-3.5" />
+            {searching ? "Searching..." : "Search Hub"}
+          </button>
+        </form>
+
+        {statusMsg && <div className="text-xs text-emerald-500">{statusMsg}</div>}
+        {errorMsg && <div className="text-xs text-rose-500">{errorMsg}</div>}
+
+        {searchResults.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+            {searchResults.map((item) => (
+              <div
+                key={item.id}
+                className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <div className="font-semibold truncate">{item.id}</div>
+                  <div className="text-slate-600 dark:text-slate-400">
+                    {item.downloads.toLocaleString()} downloads · {item.likes} likes
+                  </div>
+                </div>
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1 rounded border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1 shrink-0"
+                >
+                  Open <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {customModels && customModels.length > 0 && (
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+            <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase">
+              Imported Custom Models (models/custom/)
+            </h3>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {customModels.map((cm) => (
+                <span
+                  key={cm.filename}
+                  className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 font-mono"
+                >
+                  {cm.filename} ({(cm.size_bytes / 1024 / 1024).toFixed(2)} MB)
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
