@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "FaceVision",
+  "version": "2.1.0",
+  "identifier": "com.facevision.app",
+  "build": {
+    "beforeDevCommand": "npm --prefix ../web run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm --prefix ../web run build",
+    "frontendDist": "../../web/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "FaceVision — AI Face Detection & Privacy",
+        "width": 1280,
+        "height": 840,
+        "minWidth": 960,
+        "minHeight": 640
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' http://127.0.0.1:8000 ws://127.0.0.1:8000 data: blob:; style-src 'self' 'unsafe-inline'; img-src 'self' http://127.0.0.1:8000 data: blob:; media-src 'self' http://127.0.0.1:8000 blob:;"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all"
+  }
+}
