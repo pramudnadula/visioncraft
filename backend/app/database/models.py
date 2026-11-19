@@ -62,3 +62,18 @@ class AppSetting(Base):
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value_json: Mapped[str] = mapped_column(Text, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
+
+
+class MediaOperation(Base):
+    """Recorded image/video editing operation (crop, resize, convert, compress)."""
+
+    __tablename__ = "media_operations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_media_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    operation_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    settings_json: Mapped[str] = mapped_column(Text, nullable=False)
+    output_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    output_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), default="COMPLETED", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, nullable=False)
