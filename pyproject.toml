@@ -33,6 +33,18 @@ cloud = [
 onnx = [
     "onnxruntime>=1.19",
 ]
+# Helper packages for MediaPipe. MediaPipe itself must be installed with --no-deps because it
+# hard-requires opencv-contrib-python, which conflicts with opencv-python. Use
+# scripts/install_face_mesh.sh (see docs/models/face-mesh.md).
+facemesh = [
+    "matplotlib>=3.8",
+    "absl-py>=2.1",
+    "cffi>=1.16",
+    "sounddevice>=0.4",
+    "attrs>=23.2",
+    "protobuf>=4.25",
+    "flatbuffers>=24.3",
+]
 dev = [
     "pytest>=8.0",
     "httpx>=0.27,<1",

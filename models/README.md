@@ -7,3 +7,4 @@ FaceVision uses local-first model discovery in `models/`:
 3. **OpenCV DNN (`opencv_dnn`)** — Place `deploy.prototxt` and `res10_300x300_ssd_iter_140000.caffemodel` here (BSD-3-Clause, OpenCV).
 4. **SCRFD (`scrfd`)** — Optional adapter; requires `onnxruntime` and `scrfd_10g_bnkps.onnx`.
 5. **RetinaFace (`retinaface`)** — Optional adapter; requires `onnxruntime` and `retinaface.onnx`.
+6. **Face Mesh (`face_landmarker.task`)** — Google MediaPipe Face Landmarker, Apache-2.0, 3.76 MB, bundled. See `docs/models/face-mesh.md` for checksum, install and limitations.
