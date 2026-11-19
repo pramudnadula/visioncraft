@@ -64,6 +64,14 @@ export function Layout() {
     queryFn: api.health,
     refetchInterval: 15000,
   });
+  const { data: capabilities } = useQuery({
+    queryKey: ["capabilities"],
+    queryFn: api.capabilities,
+  });
+  const REQUIRED_MODES = ["mask", "mesh", "geometric", "mesh_3d"];
+  const backendOutdated =
+    !!capabilities &&
+    REQUIRED_MODES.some((m) => !(capabilities.privacy_modes ?? []).includes(m));
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", dark);
@@ -164,6 +172,13 @@ export function Layout() {
 
       <main className="flex-1 overflow-y-auto p-6 lg:p-8">
         <div className="max-w-7xl mx-auto">
+          {backendOutdated && (
+            <div className="mb-4 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400">
+              The running backend is older than this app, so some privacy modes (Solid Cover, Privacy Net,
+              Geometric Mesh, 3D Mesh) will not be applied. Stop the backend (Ctrl+C) and start it again with{" "}
+              <code>facevision-api</code>.
+            </div>
+          )}
           <Outlet context={{ uiMode }} />
         </div>
       </main>

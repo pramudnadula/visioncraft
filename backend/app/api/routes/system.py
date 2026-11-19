@@ -7,6 +7,7 @@ from sqlalchemy import func
 
 from backend.app.core.dependencies import AppStateContainer, get_container, require_api_token
 from backend.app.database.models import MediaAsset, ProcessingJob
+from backend.app.privacy.blur import PRIVACY_MODES
 from backend.app.schemas.api import (
     CapabilitiesResponse,
     DashboardStatsResponse,
@@ -40,6 +41,7 @@ def get_capabilities(container: AppStateContainer = Depends(get_container)) -> C
         max_video_duration_seconds=s.max_video_duration_seconds,
         supported_image_extensions=sorted(IMAGE_SIGNATURES.keys()),
         supported_video_extensions=sorted(VIDEO_SIGNATURES.keys()),
+        privacy_modes=list(PRIVACY_MODES),
     )
 
 

@@ -11,6 +11,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.app.core.dependencies import AppStateContainer
 from backend.app.core.exceptions import JobNotFoundError
 from backend.app.detection.base import DetectorConfig
+from backend.app.privacy.blur import validate_blur_mode
 from backend.app.processing.webcam import WebcamProcessor
 
 ws_router = APIRouter(prefix="/ws/v1", tags=["websocket"])
@@ -84,8 +85,12 @@ async def webcam_stream_ws(websocket: WebSocket) -> None:
             raw_text = await websocket.receive_text()
             payload = json.loads(raw_text)
             model_id = str(payload.get("model_id", "haar"))
-            blur_mode = payload.get("blur_mode", "none")
             draw_boxes = bool(payload.get("draw_boxes", True))
+            try:
+                blur_mode = validate_blur_mode(str(payload.get("blur_mode", "none")))
+            except ValueError as exc:
+                await websocket.send_json({"error": str(exc)})
+                continue
 
             if model_id != current_model_id:
                 detector.release()
@@ -95,10 +100,9 @@ async def webcam_stream_ws(websocket: WebSocket) -> None:
                 current_model_id = model_id
 
             frame_b64 = payload.get("frame")
-            if not frame_b64:
-                continue
-            frame = processor.decode_base64_frame(str(frame_b64))
+            frame = processor.decode_base64_frame(str(frame_b64)) if frame_b64 else None
             if frame is None:
+                await websocket.send_json({"error": "Invalid or empty camera frame."})
                 continue
 
             res = processor.process_frame(

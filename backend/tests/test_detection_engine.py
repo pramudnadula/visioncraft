@@ -79,3 +79,40 @@ def test_selective_privacy_blur() -> None:
         blurred = apply_privacy_blur(frame, dets, mode, selected_indices=[0])
         assert not np.array_equal(blurred[10:50, 10:50], frame[10:50, 10:50])
         assert np.array_equal(blurred[10:50, 110:150], frame[10:50, 110:150])
+
+
+def test_every_privacy_mode_renders_a_distinct_result() -> None:
+    from backend.app.detection.base import LandmarkPoint
+    from backend.app.privacy.blur import PRIVACY_MODES
+
+    rng = np.random.default_rng(3)
+    frame = rng.integers(40, 220, size=(360, 360, 3), dtype=np.uint8)
+    det = Detection(
+        x=100,
+        y=70,
+        width=160,
+        height=210,
+        confidence=0.9,
+        landmarks=[
+            LandmarkPoint(150, 140),
+            LandmarkPoint(210, 140),
+            LandmarkPoint(180, 185),
+            LandmarkPoint(155, 230),
+            LandmarkPoint(205, 230),
+        ],
+    )
+    renders = {mode: apply_privacy_blur(frame, [det], mode) for mode in PRIVACY_MODES}
+    assert np.array_equal(renders["none"], frame)
+    modes = list(renders)
+    for i, a in enumerate(modes):
+        for b in modes[i + 1 :]:
+            assert not np.array_equal(renders[a], renders[b]), f"{a} and {b} render identically"
+
+
+def test_unknown_privacy_mode_is_rejected() -> None:
+    import pytest
+
+    from backend.app.privacy.blur import validate_blur_mode
+
+    with pytest.raises(ValueError):
+        validate_blur_mode("sparkles")

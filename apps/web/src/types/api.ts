@@ -18,6 +18,7 @@ export interface CapabilitiesResponse {
   max_video_duration_seconds: number;
   supported_image_extensions: string[];
   supported_video_extensions: string[];
+  privacy_modes?: string[];
 }
 
 export interface MediaAsset {

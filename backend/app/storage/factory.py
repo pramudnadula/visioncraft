@@ -30,9 +30,7 @@ def create_storage_adapter(settings: Settings) -> StorageAdapter:
 
     if backend in {"firebase", "gcs"}:
         if not settings.gcs_bucket:
-            raise StorageError(
-                f"FACEVISION_GCS_BUCKET is required when storage_backend='{backend}'."
-            )
+            raise StorageError(f"FACEVISION_GCS_BUCKET is required when storage_backend='{backend}'.")
         return FirebaseGCSStorageAdapter(
             bucket=settings.gcs_bucket,
             cache_dir=settings.resolved_data_dir / "gcs_cache",

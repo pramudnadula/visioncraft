@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import Literal
+from typing import Literal, get_args
 
 import cv2
 
 from backend.app.detection.base import Detection
 
 BlurMode = Literal["none", "gaussian", "pixelate", "mask", "mesh", "geometric", "mesh_3d"]
+PRIVACY_MODES: tuple[str, ...] = get_args(BlurMode)
+
+
+def validate_blur_mode(mode: str) -> BlurMode:
+    """Return a typed blur mode or raise ValueError for unsupported values."""
+    if mode not in PRIVACY_MODES:
+        raise ValueError(f"Unsupported privacy mode '{mode}'. Supported: {', '.join(PRIVACY_MODES)}")
+    return mode  # type: ignore[return-value]
 
 
 def _clip_roi(frame: cv2.typing.MatLike, detection: Detection) -> tuple[int, int, int, int] | None:

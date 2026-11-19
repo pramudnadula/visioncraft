@@ -76,12 +76,19 @@ export function WebcamPage() {
       };
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data) as {
-          face_count: number;
-          latency_ms: number;
+          error?: string;
+          face_count?: number;
+          latency_ms?: number;
           annotated_frame?: string;
         };
-        setFaceCount(data.face_count);
-        setLatencyMs(data.latency_ms);
+        if (data.error) {
+          setError(data.error);
+          window.setTimeout(sendNextFrame, 300);
+          return;
+        }
+        setError(null);
+        setFaceCount(data.face_count ?? 0);
+        setLatencyMs(data.latency_ms ?? 0);
         if (data.annotated_frame) setAnnotatedSrc(data.annotated_frame);
         window.requestAnimationFrame(sendNextFrame);
       };

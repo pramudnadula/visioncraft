@@ -22,9 +22,7 @@ class FirebaseGCSStorageAdapter(StorageAdapter):
         credentials_path: Path | None = None,
     ) -> None:
         if importlib.util.find_spec("google.cloud.storage") is None:
-            raise StorageError(
-                "Firebase/GCS storage requires optional 'google-cloud-storage' dependency."
-            )
+            raise StorageError("Firebase/GCS storage requires optional 'google-cloud-storage' dependency.")
         from google.cloud import storage as gcs  # type: ignore[import-not-found]
 
         self.cache_dir = cache_dir.resolve()

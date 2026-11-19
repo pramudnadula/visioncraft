@@ -27,6 +27,7 @@ class CapabilitiesResponse(BaseModel):
     max_video_duration_seconds: int
     supported_image_extensions: list[str]
     supported_video_extensions: list[str]
+    privacy_modes: list[str] = []
 
 
 class MediaAssetResponse(BaseModel):
