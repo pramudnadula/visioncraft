@@ -3,9 +3,11 @@ import { useOutletContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Play, Sparkles } from "lucide-react";
 import { DropZone } from "../components/DropZone";
+import { FaceMeshControls, useFaceMeshSettings } from "../components/FaceMeshControls";
+import { FaceMeshResults } from "../components/FaceMeshResults";
 import { JobProgressCard } from "../components/JobProgressCard";
 import { api } from "../lib/api";
-import type { BlurMode, DetectionBox, JobResponse, MediaAsset } from "../types/api";
+import type { BlurMode, DetectionBox, FaceMeshResult, JobResponse, MediaAsset } from "../types/api";
 
 export function ImageStudioPage() {
   const outlet = useOutletContext<{ uiMode?: "simple" | "advanced" } | null>();
@@ -25,6 +27,7 @@ export function ImageStudioPage() {
   const [job, setJob] = useState<JobResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [faceMesh, setFaceMesh] = useFaceMeshSettings();
 
   const handleUpload = async (files: File[]) => {
     const file = files[0];
@@ -57,6 +60,7 @@ export function ImageStudioPage() {
         confidence_threshold: confidence,
         save_crops: saveCrops,
         save_privacy_image: true,
+        face_mesh: faceMesh.enabled ? faceMesh : null,
         selected_face_indices: selectedFaces,
       });
       setJob(created);
@@ -70,6 +74,7 @@ export function ImageStudioPage() {
         face_count?: number;
         duration_ms?: number;
         detections?: DetectionBox[];
+        face_mesh?: FaceMeshResult | null;
         files?: { annotated?: string; privacy_blurred?: string; crops?: string[] };
       }
     | undefined;
@@ -132,8 +137,6 @@ export function ImageStudioPage() {
                 <option value="pixelate" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Pixelate</option>
           <option value="mask" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Solid Cover (Mask)</option>
           <option value="mesh" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Privacy Net (Mesh)</option>
-          <option value="geometric" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Geometric Face Mesh</option>
-          <option value="mesh_3d" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">3D Face Mesh &amp; Pose</option>
               </select>
             </div>
 
@@ -211,6 +214,8 @@ export function ImageStudioPage() {
             </button>
           </div>
 
+          <FaceMeshControls value={faceMesh} onChange={setFaceMesh} advanced={isAdvanced} />
+
           {error && (
             <div className="p-3 rounded-lg bg-rose-500/15 text-rose-400 text-xs">{error}</div>
           )}
@@ -284,6 +289,13 @@ export function ImageStudioPage() {
               />
             )}
           </div>
+
+          {job?.status === "COMPLETED" && (
+            <FaceMeshResults
+              result={manifest?.face_mesh}
+              downloadUrl={manifest?.face_mesh ? api.artifactUrl(job.id, "face_mesh.json") : undefined}
+            />
+          )}
 
           {manifest?.detections && manifest.detections.length > 0 && (
             <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">

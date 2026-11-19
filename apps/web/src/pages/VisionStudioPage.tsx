@@ -81,7 +81,7 @@ export function VisionStudioPage() {
     { id: "objects", label: "Objects", icon: ScanSearch, ready: isTaskReady("objects") },
     { id: "vehicles", label: "Vehicles", icon: Car, ready: isTaskReady("vehicles") },
     { id: "mask", label: "Face Mask", icon: ShieldCheck, ready: isTaskReady("mask") },
-    { id: "facial", label: "Facial Mesh", icon: Smile, ready: isTaskReady("facial") },
+    { id: "facial", label: "Face Mesh Data", icon: Smile, ready: isTaskReady("facial") },
     { id: "hands", label: "Hands", icon: Hand, ready: isTaskReady("hands") },
     { id: "pose", label: "Body Pose", icon: Accessibility, ready: isTaskReady("pose") },
   ];
@@ -135,7 +135,9 @@ export function VisionStudioPage() {
                   ? caps?.object_model_hint
                   : task === "mask"
                   ? "Place face_mask_classifier.onnx in models/ to enable face mask classification."
-                  : "Install optional 'mediapipe' package in .venv to enable this analyzer."}
+                  : task === "facial"
+                  ? "Face mesh needs the mediapipe package and models/face_landmarker.task (see docs/models/face-mesh.md)."
+                  : "This task needs the optional mediapipe package and an extra model (see Model Hub)."}
               </div>
             )}
 

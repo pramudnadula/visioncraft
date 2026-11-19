@@ -1,4 +1,54 @@
 export type BlurMode = "none" | "gaussian" | "pixelate" | "mask" | "mesh" | "geometric" | "mesh_3d";
+
+export interface FaceMeshSettings {
+  enabled: boolean;
+  max_faces: number;
+  min_confidence: number;
+  color: string;
+  feature_color: string;
+  opacity: number;
+  thickness: number;
+  show_landmarks: boolean;
+  landmark_size: number;
+  show_tessellation: boolean;
+  show_contours: boolean;
+  show_face_oval: boolean;
+  show_eyes: boolean;
+  show_eyebrows: boolean;
+  show_lips: boolean;
+  show_nose: boolean;
+  show_irises: boolean;
+  include_landmarks_in_report: boolean;
+}
+
+export interface FaceMeshFaceSummary {
+  face_index: number;
+  tracking_id: number | null;
+  landmark_count: number;
+  head_pose: { pitch_deg: number; yaw_deg: number; roll_deg: number } | null;
+  expression_indicators: Array<{ name: string; score: number }>;
+}
+
+export interface FaceMeshResult {
+  face_count: number;
+  faces: FaceMeshFaceSummary[];
+  disclaimer?: string;
+  frames_analyzed?: number;
+  frames_with_faces?: number;
+  unique_face_tracks?: number;
+  max_faces_in_frame?: number;
+}
+
+export interface FaceMeshStatus {
+  available: boolean;
+  model: string;
+  license: string;
+  landmarks: number;
+  offline: boolean;
+  checksum_verified: boolean | null;
+  unavailable_reason: string | null;
+  disclaimer: string;
+}
 export type ExecutionMode = "local_desktop" | "web_local_agent" | "cloud";
 
 export interface HealthResponse {
@@ -78,6 +128,7 @@ export interface JobCreateRequest {
   target_fps?: number | null;
   show_hud?: boolean;
   draw_boxes?: boolean;
+  face_mesh?: FaceMeshSettings | null;
 }
 
 export interface ModelInfo {

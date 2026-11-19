@@ -3,6 +3,7 @@ import type {
   CloudTestResponse,
   CustomModelFile,
   DashboardStats,
+  FaceMeshStatus,
   GeneratedReportItem,
   HealthResponse,
   ImageMetadataInfo,
@@ -177,6 +178,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
+  faceMeshStatus: () => request<FaceMeshStatus>("/vision/faces/mesh/status"),
   analyzeFacialLandmarks: (payload: { media_id: string }) =>
     request<Record<string, unknown>>("/vision/faces/analyze", {
       method: "POST",

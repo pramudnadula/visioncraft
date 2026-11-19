@@ -1,10 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Camera, CameraOff, Download } from "lucide-react";
+import { useOutletContext } from "react-router-dom";
+import { FaceMeshControls, useFaceMeshSettings } from "../components/FaceMeshControls";
+import { FaceMeshResults } from "../components/FaceMeshResults";
 import { api } from "../lib/api";
-import type { BlurMode } from "../types/api";
+import type { BlurMode, FaceMeshResult } from "../types/api";
 
 export function WebcamPage() {
+  const outlet = useOutletContext<{ uiMode?: "simple" | "advanced" } | null>();
+  const [faceMesh, setFaceMesh] = useFaceMeshSettings();
+  const faceMeshRef = useRef(faceMesh);
+  const [showBoxes, setShowBoxes] = useState(true);
+  const showBoxesRef = useRef(showBoxes);
+  const [meshResult, setMeshResult] = useState<FaceMeshResult | null>(null);
   const { data: models } = useQuery({ queryKey: ["models"], queryFn: api.models });
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -27,6 +36,14 @@ export function WebcamPage() {
   useEffect(() => {
     blurModeRef.current = blurMode;
   }, [blurMode]);
+
+  useEffect(() => {
+    faceMeshRef.current = faceMesh;
+  }, [faceMesh]);
+
+  useEffect(() => {
+    showBoxesRef.current = showBoxes;
+  }, [showBoxes]);
   const [faceCount, setFaceCount] = useState(0);
   const [latencyMs, setLatencyMs] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +97,7 @@ export function WebcamPage() {
           face_count?: number;
           latency_ms?: number;
           annotated_frame?: string;
+          face_mesh?: FaceMeshResult | null;
         };
         if (data.error) {
           setError(data.error);
@@ -89,6 +107,7 @@ export function WebcamPage() {
         setError(null);
         setFaceCount(data.face_count ?? 0);
         setLatencyMs(data.latency_ms ?? 0);
+        setMeshResult(data.face_mesh ?? null);
         if (data.annotated_frame) setAnnotatedSrc(data.annotated_frame);
         window.requestAnimationFrame(sendNextFrame);
       };
@@ -122,7 +141,8 @@ export function WebcamPage() {
         frame,
         model_id: modelIdRef.current,
         blur_mode: blurModeRef.current,
-        draw_boxes: true,
+        draw_boxes: showBoxesRef.current,
+        mesh: faceMeshRef.current.enabled ? faceMeshRef.current : null,
       })
     );
   };
@@ -181,8 +201,6 @@ export function WebcamPage() {
           <option value="pixelate" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Pixelate</option>
           <option value="mask" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Solid Cover (Mask)</option>
           <option value="mesh" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Privacy Net (Mesh)</option>
-          <option value="geometric" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Geometric Face Mesh</option>
-          <option value="mesh_3d" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">3D Face Mesh &amp; Pose</option>
         </select>
 
         {!running ? (
@@ -221,18 +239,29 @@ export function WebcamPage() {
 
       {error && <div className="p-3 rounded-lg bg-rose-500/15 text-rose-400 text-sm">{error}</div>}
 
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-black p-2 flex items-center justify-center h-[calc(100vh-14rem)] min-h-[480px]">
-        <video ref={videoRef} className="hidden" muted playsInline />
-        <canvas ref={canvasRef} className="hidden" />
-        {annotatedSrc ? (
-          <img
-            src={annotatedSrc}
-            alt="Live webcam detection"
-            className="w-full h-full object-contain rounded-lg"
-          />
-        ) : (
-          <p className="text-sm text-slate-500">Click Start Camera to begin live face detection.</p>
-        )}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_20rem] gap-4">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-black p-2 flex items-center justify-center h-[calc(100vh-14rem)] min-h-[480px]">
+          <video ref={videoRef} className="hidden" muted playsInline />
+          <canvas ref={canvasRef} className="hidden" />
+          {annotatedSrc ? (
+            <img
+              src={annotatedSrc}
+              alt="Live webcam detection"
+              className="w-full h-full object-contain rounded-lg"
+            />
+          ) : (
+            <p className="text-sm text-slate-500">Click Start Camera to begin live face detection.</p>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <label className="flex items-center gap-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3">
+            <input type="checkbox" checked={showBoxes} onChange={(e) => setShowBoxes(e.target.checked)} />
+            Show face boxes
+          </label>
+          <FaceMeshControls value={faceMesh} onChange={setFaceMesh} advanced={outlet?.uiMode === "advanced"} live />
+          {faceMesh.enabled && <FaceMeshResults result={meshResult} />}
+        </div>
       </div>
     </div>
   );

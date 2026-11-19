@@ -3,9 +3,11 @@ import { useOutletContext } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Film, Play } from "lucide-react";
 import { DropZone } from "../components/DropZone";
+import { FaceMeshControls, useFaceMeshSettings } from "../components/FaceMeshControls";
+import { FaceMeshResults } from "../components/FaceMeshResults";
 import { JobProgressCard } from "../components/JobProgressCard";
 import { api } from "../lib/api";
-import type { BlurMode, JobResponse, MediaAsset } from "../types/api";
+import type { BlurMode, FaceMeshResult, JobResponse, MediaAsset } from "../types/api";
 
 export function VideoStudioPage() {
   const outlet = useOutletContext<{ uiMode?: "simple" | "advanced" } | null>();
@@ -20,6 +22,7 @@ export function VideoStudioPage() {
   const [job, setJob] = useState<JobResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [faceMesh, setFaceMesh] = useFaceMeshSettings();
 
   const handleUpload = async (files: File[]) => {
     const file = files[0];
@@ -49,6 +52,7 @@ export function VideoStudioPage() {
         cloud_consent: false,
         blur_mode: blurMode,
         enable_tracking: enableTracking,
+        face_mesh: faceMesh.enabled ? faceMesh : null,
         save_privacy_video: savePrivacyVideo,
         target_fps: targetFps ? Number(targetFps) : null,
       });
@@ -64,6 +68,7 @@ export function VideoStudioPage() {
         total_detections?: number;
         unique_track_count?: number;
         duration_ms?: number;
+        face_mesh?: FaceMeshResult | null;
       }
     | undefined;
 
@@ -113,8 +118,6 @@ export function VideoStudioPage() {
                 <option value="pixelate" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Pixelate</option>
           <option value="mask" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Solid Cover (Mask)</option>
           <option value="mesh" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Privacy Net (Mesh)</option>
-          <option value="geometric" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">Geometric Face Mesh</option>
-          <option value="mesh_3d" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">3D Face Mesh &amp; Pose</option>
               </select>
             </div>
 
@@ -160,6 +163,8 @@ export function VideoStudioPage() {
               <Play className="h-4 w-4" /> Start Video Processing
             </button>
           </div>
+
+          <FaceMeshControls value={faceMesh} onChange={setFaceMesh} advanced={isAdvanced} />
 
           {error && <div className="p-3 rounded-lg bg-rose-500/15 text-rose-400 text-xs">{error}</div>}
           {job && <JobProgressCard job={job} onUpdated={setJob} />}
@@ -219,6 +224,12 @@ export function VideoStudioPage() {
               </div>
             )}
           </div>
+          {job?.status === "COMPLETED" && (
+            <FaceMeshResults
+              result={manifest?.face_mesh}
+              downloadUrl={manifest?.face_mesh ? api.artifactUrl(job.id, "face_mesh.json") : undefined}
+            />
+          )}
         </div>
       </div>
     </div>
