@@ -22,6 +22,7 @@
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[backend,dev]"
+# or without editable install: pip install -r requirements.txt
 facevision-api
 ```
 

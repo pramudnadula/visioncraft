@@ -9,7 +9,7 @@ CLI := $(VENV)/bin/face-detect
 setup:
 	$(PYTHON) -m venv $(VENV)
 	$(PIP) install --upgrade pip
-	$(PIP) install -e ".[dev]"
+	$(PIP) install -e ".[backend,dev]"
 
 test:
 	$(PYTEST) -v
