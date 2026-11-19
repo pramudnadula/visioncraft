@@ -11,6 +11,7 @@ import {
   Moon,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   Sun,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { to: "/images", label: "Image Detection", icon: ImageIcon },
   { to: "/videos", label: "Video Detection", icon: Film },
   { to: "/webcam", label: "Live Webcam", icon: Camera },
+  { to: "/media-studio", label: "Media Studio", icon: SlidersHorizontal },
   { to: "/batch", label: "Batch Processing", icon: Layers },
   { to: "/history", label: "History", icon: History },
   { to: "/models", label: "Models", icon: Cpu },

@@ -5,6 +5,7 @@ import { BatchPage } from "./pages/BatchPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { ImageStudioPage } from "./pages/ImageStudioPage";
+import { MediaStudioPage } from "./pages/MediaStudioPage";
 import { ModelsPage } from "./pages/ModelsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { VideoStudioPage } from "./pages/VideoStudioPage";
@@ -22,6 +23,7 @@ export function App() {
             <Route path="/images" element={<ImageStudioPage />} />
             <Route path="/videos" element={<VideoStudioPage />} />
             <Route path="/webcam" element={<WebcamPage />} />
+            <Route path="/media-studio" element={<MediaStudioPage />} />
             <Route path="/batch" element={<BatchPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/models" element={<ModelsPage />} />

@@ -4,6 +4,8 @@ import type {
   CustomModelFile,
   DashboardStats,
   HealthResponse,
+  ImageMetadataInfo,
+  ImageOperationResponse,
   JobCreateRequest,
   JobResponse,
   MediaAsset,
@@ -81,6 +83,62 @@ export const api = {
     form.append("file", file);
     return request<CustomModelFile>("/models/import", { method: "POST", body: form });
   },
+
+  imageMetadata: (mediaId: string) =>
+    request<ImageMetadataInfo>(`/media/image/${mediaId}/metadata`),
+  cropImage: (payload: {
+    media_id: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotate_deg?: number;
+    flip_h?: boolean;
+    flip_v?: boolean;
+  }) =>
+    request<ImageOperationResponse>("/media/image/crop", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  resizeImage: (payload: {
+    media_id: string;
+    width?: number | null;
+    height?: number | null;
+    scale_percent?: number | null;
+    preserve_aspect?: boolean;
+  }) =>
+    request<ImageOperationResponse>("/media/image/resize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  convertImage: (payload: {
+    media_id: string;
+    target_format: string;
+    quality?: number;
+    background_color?: string;
+    preserve_metadata?: boolean;
+    preserve_animation?: boolean;
+  }) =>
+    request<ImageOperationResponse>("/media/image/convert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  compressImage: (payload: {
+    media_id: string;
+    quality?: number;
+    target_kb?: number | null;
+    target_format?: string;
+    max_width?: number | null;
+    max_height?: number | null;
+  }) =>
+    request<ImageOperationResponse>("/media/image/compress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
   getSettings: () => request<SettingsData>("/settings"),
   updateSettings: (payload: Partial<SettingsData>) =>
     request<SettingsData>("/settings", {

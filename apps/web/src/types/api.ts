@@ -123,6 +123,34 @@ export interface CustomModelFile {
   size_bytes: number;
 }
 
+export interface ImageOperationResponse {
+  operation_id: string;
+  operation_type: string;
+  output_filename: string;
+  output_format: string;
+  width: number;
+  height: number;
+  original_size_bytes: number;
+  output_size_bytes: number;
+  reduction_percent: number;
+  target_achieved: boolean;
+  animation_preserved: boolean;
+  note: string | null;
+  download_url: string;
+}
+
+export interface ImageMetadataInfo {
+  format: string;
+  mode: string;
+  width: number;
+  height: number;
+  size_bytes: number;
+  is_animated: boolean;
+  frame_count: number;
+  has_alpha: boolean;
+  exif_keys: string[];
+}
+
 export interface DashboardStats {
   total_media: number;
   total_jobs: number;
