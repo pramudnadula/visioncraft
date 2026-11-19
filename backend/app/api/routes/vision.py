@@ -10,9 +10,12 @@ from backend.app.core.dependencies import AppStateContainer, get_container, requ
 from backend.app.core.exceptions import MediaNotFoundError
 from backend.app.database.models import MediaAsset
 from backend.app.detection.base import DetectorConfig
+from backend.app.vision.faces.expressions import FacialExpressionAnalyzer
 from backend.app.vision.faces.mask_detection import FaceMaskClassifier
+from backend.app.vision.hands.detection import HandLandmarkDetector
 from backend.app.vision.objects.detection import VEHICLE_CLASSES, YOLOv8ONNXObjectDetector
 from backend.app.vision.objects.tracking import ObjectTracker
+from backend.app.vision.pose.detection import PoseLandmarkDetector
 from backend.app.vision.sign_language.recognition import list_sign_languages
 from backend.app.vision.vehicles.counting import CountingLine, VehicleCounter
 
@@ -44,12 +47,14 @@ def get_vision_capabilities(container: AppStateContainer = Depends(get_container
     return {
         "face_detection": True,
         "face_mask_ready": mask_clf.is_available(),
+        "facial_analysis_ready": FacialExpressionAnalyzer.is_available(),
+        "hand_landmarks_ready": HandLandmarkDetector.is_available(),
+        "pose_estimation_ready": PoseLandmarkDetector.is_available(),
         "object_detection_ready": obj_det.is_available(),
         "vehicle_analytics_ready": obj_det.is_available(),
         "sign_languages": list_sign_languages(),
         "object_model_hint": (
-            "Place yolov8n.onnx in models/ (or download via Model Hub) to enable "
-            "object & vehicle detection."
+            "Place yolov8n.onnx in models/ (or download via Model Hub) to enable object & vehicle detection."
         ),
     }
 
@@ -90,6 +95,45 @@ def detect_face_masks(
     finally:
         face_det.release()
         mask_clf.release()
+
+
+def _load_media_frame(container: AppStateContainer, media_id: str) -> cv2.typing.MatLike:
+    with container.db.session_scope() as session:
+        asset = session.get(MediaAsset, media_id)
+        if asset is None:
+            raise MediaNotFoundError(f"Media '{media_id}' not found.")
+        storage_key = asset.storage_key
+    frame = cv2.imread(str(container.storage.resolve_local_path(storage_key)))
+    if frame is None:
+        raise MediaNotFoundError("Could not decode image.")
+    return frame
+
+
+@router.post("/faces/analyze")
+def analyze_facial_landmarks(
+    payload: ObjectDetectRequest,
+    container: AppStateContainer = Depends(get_container),
+) -> dict[str, object]:
+    frame = _load_media_frame(container, payload.media_id)
+    return FacialExpressionAnalyzer().analyze(frame)
+
+
+@router.post("/hands/detect")
+def detect_hand_landmarks(
+    payload: ObjectDetectRequest,
+    container: AppStateContainer = Depends(get_container),
+) -> dict[str, object]:
+    frame = _load_media_frame(container, payload.media_id)
+    return HandLandmarkDetector().detect(frame)
+
+
+@router.post("/pose/detect")
+def detect_pose_landmarks(
+    payload: ObjectDetectRequest,
+    container: AppStateContainer = Depends(get_container),
+) -> dict[str, object]:
+    frame = _load_media_frame(container, payload.media_id)
+    return PoseLandmarkDetector().detect(frame)
 
 
 @router.post("/objects/detect")
