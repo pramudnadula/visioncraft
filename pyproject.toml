@@ -15,16 +15,43 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+backend = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.32,<1",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.5,<3",
+    "sqlalchemy>=2.0,<3",
+    "python-multipart>=0.0.12",
+    "websockets>=13.0",
+]
+cloud = [
+    "boto3>=1.35,<2",
+]
 dev = [
     "pytest>=8.0",
+    "httpx>=0.27,<1",
+    "ruff>=0.7",
+    "mypy>=1.11",
 ]
 
 [project.scripts]
 face-detect = "face_detector.cli:main"
+facevision-api = "backend.app.main:run_server"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "."]
+include = ["face_detector*", "backend*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
+testpaths = ["tests", "backend/tests"]
+pythonpath = ["src", "."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
