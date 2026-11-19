@@ -38,3 +38,7 @@ coverage/
 # Tauri / Rust build artifacts
 apps/desktop/src-tauri/target/
 apps/desktop/src-tauri/gen/
+
+# Large optional third-party model weights (exceeds GitHub 100 MB limit / non-commercial weights)
+models/retinaface.onnx
+models/scrfd_10g_bnkps.onnx
