@@ -6,6 +6,7 @@ import { DropZone } from "../components/DropZone";
 import { FaceMeshControls, useFaceMeshSettings } from "../components/FaceMeshControls";
 import { FaceMeshResults } from "../components/FaceMeshResults";
 import { JobProgressCard } from "../components/JobProgressCard";
+import { useDefaultDetectionSettings } from "../hooks/useDefaultDetectionSettings";
 import { api } from "../lib/api";
 import type { BlurMode, FaceMeshResult, JobResponse, MediaAsset } from "../types/api";
 
@@ -13,9 +14,8 @@ export function VideoStudioPage() {
   const outlet = useOutletContext<{ uiMode?: "simple" | "advanced" } | null>();
   const isAdvanced = outlet?.uiMode === "advanced";
   const { data: models } = useQuery({ queryKey: ["models"], queryFn: api.models });
+  const { modelId, setModelId, blurMode, setBlurMode } = useDefaultDetectionSettings();
   const [media, setMedia] = useState<MediaAsset | null>(null);
-  const [modelId, setModelId] = useState("haar");
-  const [blurMode, setBlurMode] = useState<BlurMode>("none");
   const [enableTracking, setEnableTracking] = useState(true);
   const [savePrivacyVideo, setSavePrivacyVideo] = useState(false);
   const [targetFps, setTargetFps] = useState<string>("");

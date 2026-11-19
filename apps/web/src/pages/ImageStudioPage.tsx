@@ -6,6 +6,7 @@ import { DropZone } from "../components/DropZone";
 import { FaceMeshControls, useFaceMeshSettings } from "../components/FaceMeshControls";
 import { FaceMeshResults } from "../components/FaceMeshResults";
 import { JobProgressCard } from "../components/JobProgressCard";
+import { useDefaultDetectionSettings } from "../hooks/useDefaultDetectionSettings";
 import { api } from "../lib/api";
 import type { BlurMode, DetectionBox, FaceMeshResult, JobResponse, MediaAsset } from "../types/api";
 
@@ -13,12 +14,10 @@ export function ImageStudioPage() {
   const outlet = useOutletContext<{ uiMode?: "simple" | "advanced" } | null>();
   const isAdvanced = outlet?.uiMode === "advanced";
   const { data: models } = useQuery({ queryKey: ["models"], queryFn: api.models });
-  const { data: settings } = useQuery({ queryKey: ["settings"], queryFn: api.getSettings });
+  const { settings, modelId, setModelId, blurMode, setBlurMode, confidence, setConfidence } =
+    useDefaultDetectionSettings();
 
   const [media, setMedia] = useState<MediaAsset | null>(null);
-  const [modelId, setModelId] = useState("haar");
-  const [blurMode, setBlurMode] = useState<BlurMode>("none");
-  const [confidence, setConfidence] = useState(0.6);
   const [saveCrops, setSaveCrops] = useState(true);
   const [useCloud, setUseCloud] = useState(false);
   const [cloudConsent, setCloudConsent] = useState(false);

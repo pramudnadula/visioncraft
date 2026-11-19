@@ -3,14 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Download, Play, Trash2 } from "lucide-react";
 import { DropZone } from "../components/DropZone";
 import { JobProgressCard } from "../components/JobProgressCard";
+import { useDefaultDetectionSettings } from "../hooks/useDefaultDetectionSettings";
 import { api } from "../lib/api";
 import type { BlurMode, JobResponse, MediaAsset } from "../types/api";
 
 export function BatchPage() {
   const { data: models } = useQuery({ queryKey: ["models"], queryFn: api.models });
+  const { modelId, setModelId, blurMode, setBlurMode } = useDefaultDetectionSettings();
   const [assets, setAssets] = useState<MediaAsset[]>([]);
-  const [modelId, setModelId] = useState("haar");
-  const [blurMode, setBlurMode] = useState<BlurMode>("none");
   const [job, setJob] = useState<JobResponse | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);

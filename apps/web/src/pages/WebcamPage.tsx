@@ -4,6 +4,7 @@ import { Camera, CameraOff, Download } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
 import { FaceMeshControls, useFaceMeshSettings } from "../components/FaceMeshControls";
 import { FaceMeshResults } from "../components/FaceMeshResults";
+import { useDefaultDetectionSettings } from "../hooks/useDefaultDetectionSettings";
 import { api } from "../lib/api";
 import type { BlurMode, EmotionMode, FaceEmotionResult, FaceMeshResult } from "../types/api";
 
@@ -23,8 +24,7 @@ export function WebcamPage() {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const [running, setRunning] = useState(false);
-  const [modelId, setModelId] = useState("haar");
-  const [blurMode, setBlurMode] = useState<BlurMode>("none");
+  const { modelId, setModelId, blurMode, setBlurMode } = useDefaultDetectionSettings();
   const [emotionMode, setEmotionMode] = useState<EmotionMode>("off");
   const modelIdRef = useRef(modelId);
   const blurModeRef = useRef(blurMode);
