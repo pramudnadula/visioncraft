@@ -171,6 +171,30 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
+  detectFaceMasks: (payload: { media_id: string; confidence_threshold?: number }) =>
+    request<Record<string, unknown>>("/vision/faces/mask-detect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  analyzeFacialLandmarks: (payload: { media_id: string }) =>
+    request<Record<string, unknown>>("/vision/faces/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  detectHands: (payload: { media_id: string }) =>
+    request<Record<string, unknown>>("/vision/hands/detect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  detectPose: (payload: { media_id: string }) =>
+    request<Record<string, unknown>>("/vision/pose/detect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
 
   listReports: () => request<GeneratedReportItem[]>("/reports"),
   generateReport: (payload: { job_id: string; title: string; template: string; format: "pdf" | "csv" | "json" }) =>

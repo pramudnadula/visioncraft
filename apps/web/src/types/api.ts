@@ -163,8 +163,18 @@ export interface GeneratedReportItem {
 
 export interface VisionCapabilities {
   face_detection: boolean;
+  face_mask_ready: boolean;
+  facial_analysis_ready: boolean;
+  hand_landmarks_ready: boolean;
+  pose_estimation_ready: boolean;
   object_detection_ready: boolean;
   vehicle_analytics_ready: boolean;
+  sign_languages: Array<{
+    code: string;
+    name: string;
+    model_available: boolean;
+    note: string;
+  }>;
   object_model_hint: string;
 }
 

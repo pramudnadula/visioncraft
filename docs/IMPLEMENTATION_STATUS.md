@@ -3,29 +3,29 @@
 **Last Updated:** 2026-11-19
 
 ## Completed Phases
-- **Phase 1: Repository Audit & Planning**
-  - Created `docs/architecture/legacy-audit.md`, `target-architecture.md`, `migration-plan.md`, `feature-mapping.md`.
-- **Phase 2: Backend Foundation & Shared Detection Engine**
-  - Implemented `backend/app/core/` (Pydantic settings, structured logging, typed exceptions, token auth dependency).
-  - Implemented `backend/app/detection/` (`FaceDetector` ABC, `DetectorRegistry`, Haar, YuNet, OpenCV DNN, optional SCRFD & RetinaFace adapters) and `backend/app/privacy/blur.py` (full & selective Gaussian/pixelate blur).
-- **Phase 3: Image, Video, Tracking & Batch Processing**
-  - Implemented `ImageProcessingService`, streaming `VideoProcessingService`, `FaceTracker`, `BatchProcessingService` (with ZIP export), and `WebcamProcessor`.
-- **Phase 4: Storage, Database & Background Job System**
-  - Implemented `LocalStorageAdapter` (magic-byte signature validation, UUID keys, path-traversal prevention, retention cleanup), optional `S3StorageAdapter`, SQLAlchemy ORM (`MediaAsset`, `ProcessingJob`, `AppSetting`), and `JobManager` with bounded worker pool, cancellation, retry, restart recovery, and `JobEventBus`.
-- **Phase 5: FastAPI REST & WebSocket API**
-  - Implemented `/api/v1` endpoints (`/health`, `/capabilities`, `/stats`, `/media/*`, `/jobs/*`, `/models`, `/settings`) and `/ws/v1/jobs/{job_id}`, `/ws/v1/webcam`.
-- **Phase 6: Modern Web Application (`apps/web/`)**
-  - Implemented React + TypeScript + Vite + Tailwind app with Dashboard, Image Studio (before/after + selective blur), Video Studio, Live Webcam, Batch Processing (folder import + ZIP), History, Models, and Settings.
-- **Phase 7: Desktop Application (`apps/desktop/`)**
-  - Implemented Tauri 2 configuration, scoped capabilities (`dialog:allow-open`, `dialog:allow-save`), and Rust backend process lifecycle manager (`src-tauri/src/main.rs`).
-- **Phase 8: Docker & Documentation**
-  - Added `docker/Dockerfile.backend`, `docker-compose.yml`, `models/README.md`, and `docs/` guides.
+- **Phase A — Core Platform & Modernization:**
+  - Repository audit & architecture docs (`docs/architecture/*`), FastAPI `/api/v1` + `/ws/v1`, SQLite/PostgreSQL ORM, `LocalStorageAdapter`, `S3StorageAdapter` (R2/MinIO/B2/AWS), `FirebaseGCSStorageAdapter`, bounded job queue, cancellation, retry, restart recovery.
+  - Shared detection engine with **Haar Cascade** (`detectMultiScale3`), **YuNet**, **OpenCV DNN**, **SCRFD** (ONNXRuntime), and **RetinaFace** (ONNXRuntime).
+  - Privacy modes: `none`, `gaussian`, `pixelate`, `mask` (solid cover), `mesh` (privacy net), and `geometric` (Delaunay facial landmark triangulation).
+  - React + TypeScript + Vite + Tailwind frontend (`apps/web/`) with Dark/Light themes, Simple/Advanced mode toggle, and browser `localStorage` preference persistence.
+  - Tauri 2 desktop shell (`apps/desktop/`).
+- **Phase B — Universal Media Editing Studio:**
+  - Pillow-based `crop`, `resize`, `convert` (with alpha flattening & GIF animation handling), `compress` (quality & iterative target KB), and EXIF/image metadata inspection + `ImageCropModal`.
+- **Phase C — General Object & Vehicle Analytics:**
+  - COCO 80-class YOLOv8 ONNX adapter, multi-class IoU `ObjectTracker`, and `VehicleCounter` with line-crossing & polygon-zone duplicate-count prevention.
+- **Phase D & E — Facial Intelligence & Human Vision Foundations:**
+  - `FaceMaskClassifier` (ONNX), `FacialExpressionAnalyzer` (optional MediaPipe), `HandLandmarkDetector` (optional MediaPipe), `PoseLandmarkDetector` (optional MediaPipe), and `SignLanguageSequenceBuffer` (ASL, FinSL, BSL).
+- **Phase F — AI Model Hub:**
+  - HuggingFace ONNX search, SSRF-protected HTTPS download, local `.onnx` import/delete, environment compatibility check, and live inference benchmarking.
+- **Phase G — Professional Reporting:**
+  - Plain-language **PDF** (`fpdf2`), **CSV**, and **JSON** report generator + `/reports` UI.
 
 ## Verification Results
-- **Python (`pytest -v`)**: 21 passed (6 legacy CLI/pipeline + 15 new backend/engine/API/security tests).
-- **Type Check (`mypy backend/app`)**: 0 errors across 44 source files.
-- **Frontend (`npm test` & `npm run build`)**: Vitest passed (1/1 test file); `tsc && vite build` succeeded.
+- **Python (`pytest -v`):** 35 passed.
+- **Type Check (`mypy backend/app`):** 0 errors across 71 source files.
+- **Linter (`ruff check backend/ src/ tests/`):** All checks passed.
+- **Frontend (`npm test` & `npm run build`):** 2 Vitest tests passed; `tsc && vite build` succeeded.
 
 ## Environment Notes
-- `cargo`/`rustc` and `ffmpeg` are not installed on PATH in this environment, so `apps/desktop/src-tauri/` Rust compilation was not executed locally.
-- Optional third-party ONNX weights (YuNet, SCRFD, RetinaFace) and Caffe SSD weights are not bundled by default; Haar Cascade works out of the box.
+- `cargo`/`rustc` and `ffmpeg` are not installed on `PATH` in this macOS environment, so `apps/desktop/src-tauri/` Rust compilation was not executed locally.
+- Optional third-party weights (`yolov8n.onnx`, `face_mask_classifier.onnx`, `mediapipe`, sign language sequence models) are not bundled by default and report their exact availability status in `/api/v1/vision/capabilities`.
