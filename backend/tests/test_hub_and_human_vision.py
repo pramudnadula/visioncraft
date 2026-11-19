@@ -34,7 +34,7 @@ def test_sign_language_sequence_buffer_and_honest_language_status() -> None:
 
     langs = list_sign_languages()
     assert any(lang["code"] == "FinSL" and lang["model_available"] is False for lang in langs)
-    assert any(lang["code"] == "ASL" and lang["model_available"] is False for lang in langs)
+    assert any(lang["code"] == "BSL" and lang["model_available"] is False for lang in langs)
 
 
 def test_model_hub_compatibility_benchmark_and_custom_delete(tmp_path: Path) -> None:

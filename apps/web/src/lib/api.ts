@@ -224,6 +224,12 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
+  detectSignLanguage: (payload: { media_id: string; confidence_threshold?: number }) =>
+    request<Record<string, unknown>>("/vision/sign-language/detect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
   analyze3DMesh: (payload: { media_id: string }) =>
     request<Record<string, unknown>>("/vision/faces/mesh-3d", {
       method: "POST",

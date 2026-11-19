@@ -5,7 +5,7 @@ import { DropZone } from "../components/DropZone";
 import { api } from "../lib/api";
 import type { MediaAsset } from "../types/api";
 
-type VisionTask = "mesh3d" | "objects" | "vehicles" | "mask" | "facial" | "hands" | "pose";
+type VisionTask = "mesh3d" | "objects" | "vehicles" | "mask" | "facial" | "hands" | "pose" | "asl";
 
 export function VisionStudioPage() {
   const { data: caps } = useQuery({
@@ -42,6 +42,7 @@ export function VisionStudioPage() {
     if (t === "facial") return caps.facial_analysis_ready;
     if (t === "hands") return caps.hand_landmarks_ready;
     if (t === "pose") return caps.pose_estimation_ready;
+    if (t === "asl") return caps.sign_languages?.some((s) => s.code === "ASL" && s.model_available) ?? false;
     return false;
   };
 
@@ -68,6 +69,8 @@ export function VisionStudioPage() {
         setResults(await api.detectHands({ media_id: media.id }));
       } else if (task === "pose") {
         setResults(await api.detectPose({ media_id: media.id }));
+      } else if (task === "asl") {
+        setResults(await api.detectSignLanguage({ media_id: media.id }));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Analysis failed");
@@ -84,6 +87,7 @@ export function VisionStudioPage() {
     { id: "facial", label: "Face Mesh Data", icon: Smile, ready: isTaskReady("facial") },
     { id: "hands", label: "Hands", icon: Hand, ready: isTaskReady("hands") },
     { id: "pose", label: "Body Pose", icon: Accessibility, ready: isTaskReady("pose") },
+    { id: "asl", label: "ASL Sign", icon: Hand, ready: isTaskReady("asl") },
   ];
 
   return (
@@ -157,7 +161,9 @@ export function VisionStudioPage() {
               {caps.sign_languages.map((sl) => (
                 <div key={sl.code} className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                   <span>{sl.code} ({sl.name})</span>
-                  <span className="text-amber-500">{sl.model_available ? "Ready" : "Model Required"}</span>
+                  <span className={sl.model_available ? "text-emerald-500 font-medium" : "text-amber-500"}>
+                    {sl.model_available ? "Ready" : "Model Required"}
+                  </span>
                 </div>
               ))}
             </div>

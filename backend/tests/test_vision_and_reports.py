@@ -261,3 +261,21 @@ def test_heic_convert_and_u2net_background_removal(tmp_path: Path) -> None:
         )
         assert bg_res.output_format == "PNG"
         assert bg_out.is_file() and bg_out.stat().st_size > 0
+
+
+def test_asl_sign_language_registry_and_detector() -> None:
+    from pathlib import Path
+
+    from backend.app.vision.sign_language.recognition import ASLSignDetector, list_sign_languages
+
+    models_dir = Path("models")
+    langs = {item["code"]: item for item in list_sign_languages(models_dir)}
+    assert langs["ASL"]["model_available"] is True
+    assert langs["FinSL"]["model_available"] is False
+    assert langs["BSL"]["model_available"] is False
+
+    frame = np.zeros((240, 320, 3), dtype=np.uint8)
+    res = ASLSignDetector(models_dir=models_dir).detect(frame)
+    assert res["language"] == "ASL"
+    assert isinstance(res["asl_letters"], list)
+    assert isinstance(res["gestures"], list)

@@ -22,7 +22,7 @@ from backend.app.vision.hands.detection import HandLandmarkDetector
 from backend.app.vision.objects.detection import VEHICLE_CLASSES, YOLOv8ONNXObjectDetector
 from backend.app.vision.objects.tracking import ObjectTracker
 from backend.app.vision.pose.detection import PoseLandmarkDetector
-from backend.app.vision.sign_language.recognition import list_sign_languages
+from backend.app.vision.sign_language.recognition import ASLSignDetector, list_sign_languages
 from backend.app.vision.vehicles.counting import CountingLine, VehicleCounter
 
 router = APIRouter(
@@ -60,7 +60,7 @@ def get_vision_capabilities(container: AppStateContainer = Depends(get_container
         "pose_estimation_ready": PoseLandmarkDetector.is_available(models_dir),
         "object_detection_ready": obj_det.is_available(),
         "vehicle_analytics_ready": obj_det.is_available(),
-        "sign_languages": list_sign_languages(),
+        "sign_languages": list_sign_languages(models_dir),
         "object_model_hint": (
             "Place yolov8n.onnx in models/ (or download via Model Hub) to enable object & vehicle detection."
         ),
@@ -68,8 +68,20 @@ def get_vision_capabilities(container: AppStateContainer = Depends(get_container
 
 
 @router.get("/sign-language/languages")
-def get_sign_languages() -> list[dict[str, object]]:
-    return list_sign_languages()
+def get_sign_languages(container: AppStateContainer = Depends(get_container)) -> list[dict[str, object]]:
+    return list_sign_languages(container.settings.resolved_models_dir)
+
+
+@router.post("/sign-language/detect")
+def detect_sign_language(
+    payload: ObjectDetectRequest,
+    container: AppStateContainer = Depends(get_container),
+) -> dict[str, object]:
+    frame = _load_media_frame(container, payload.media_id)
+    return ASLSignDetector(
+        models_dir=container.settings.resolved_models_dir,
+        confidence_threshold=payload.confidence_threshold,
+    ).detect(frame)
 
 
 @router.post("/faces/mask-detect")
