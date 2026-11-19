@@ -56,7 +56,7 @@ def get_vision_capabilities(container: AppStateContainer = Depends(get_container
         "face_mask_ready": mask_clf.is_available(),
         "facial_analysis_ready": mesh_status(models_dir)["available"],
         "face_mesh_ready": mesh_status(models_dir)["available"],
-        "hand_landmarks_ready": HandLandmarkDetector.is_available(),
+        "hand_landmarks_ready": HandLandmarkDetector.is_available(models_dir),
         "pose_estimation_ready": PoseLandmarkDetector.is_available(models_dir),
         "object_detection_ready": obj_det.is_available(),
         "vehicle_analytics_ready": obj_det.is_available(),
@@ -152,7 +152,7 @@ def detect_hand_landmarks(
     container: AppStateContainer = Depends(get_container),
 ) -> dict[str, object]:
     frame = _load_media_frame(container, payload.media_id)
-    return HandLandmarkDetector().detect(frame)
+    return HandLandmarkDetector(models_dir=container.settings.resolved_models_dir).detect(frame)
 
 
 @router.post("/pose/detect")

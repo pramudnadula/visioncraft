@@ -168,3 +168,32 @@ def test_privacy_modes_produce_distinct_outputs() -> None:
         outputs[mode] = out.tobytes()
 
     assert len(set(outputs.values())) == 7
+
+
+def test_hand_object_and_mask_models_initialize_and_run() -> None:
+    from pathlib import Path
+
+    from backend.app.detection.base import Detection
+    from backend.app.vision.faces.mask_detection import FaceMaskClassifier
+    from backend.app.vision.hands.detection import HandLandmarkDetector
+    from backend.app.vision.objects.detection import YOLOv8ONNXObjectDetector
+
+    models_dir = Path("models")
+    frame = np.zeros((240, 320, 3), dtype=np.uint8)
+
+    if HandLandmarkDetector.is_available(models_dir):
+        hand_res = HandLandmarkDetector(models_dir=models_dir).detect(frame)
+        assert hand_res["hand_count"] == 0
+        assert hand_res["model"] == "hand_landmarker.task"
+
+    obj_det = YOLOv8ONNXObjectDetector(models_dir=models_dir)
+    if obj_det.is_available():
+        assert isinstance(obj_det.detect(frame), list)
+        obj_det.release()
+
+    mask_clf = FaceMaskClassifier(models_dir=models_dir)
+    if mask_clf.is_available():
+        det = Detection(x=40, y=40, width=100, height=100, confidence=0.9)
+        res = mask_clf.classify_faces(frame, [det])
+        assert res["face_count"] == 1
+        mask_clf.release()

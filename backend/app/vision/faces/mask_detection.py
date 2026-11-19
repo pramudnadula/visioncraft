@@ -37,6 +37,7 @@ class FaceMaskClassifier:
         self._session: Any = None
         self._input_name = "input"
         self._input_size = (224, 224)
+        self._nhwc = False
 
     def resolve_model_path(self) -> Path | None:
         for directory in (self.models_dir, self.models_dir / "custom"):
@@ -64,8 +65,13 @@ class FaceMaskClassifier:
         self._session = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
         inp = self._session.get_inputs()[0]
         self._input_name = inp.name
-        if len(inp.shape) == 4 and isinstance(inp.shape[2], int) and isinstance(inp.shape[3], int):
-            self._input_size = (int(inp.shape[3]), int(inp.shape[2]))
+        if len(inp.shape) == 4:
+            if inp.shape[3] == 3 and isinstance(inp.shape[1], int) and isinstance(inp.shape[2], int):
+                self._nhwc = True
+                self._input_size = (int(inp.shape[2]), int(inp.shape[1]))
+            elif isinstance(inp.shape[2], int) and isinstance(inp.shape[3], int):
+                self._nhwc = False
+                self._input_size = (int(inp.shape[3]), int(inp.shape[2]))
 
     def classify_faces(self, frame: cv2.typing.MatLike, detections: list[Detection]) -> dict[str, Any]:
         if self._session is None:
@@ -81,10 +87,17 @@ class FaceMaskClassifier:
             if x2 <= x1 or y2 <= y1:
                 continue
             crop = cv2.resize(frame[y1:y2, x1:x2], self._input_size)
-            blob = cv2.dnn.blobFromImage(crop, 1.0 / 255.0, self._input_size, (0, 0, 0), swapRB=True)
+            if self._nhwc:
+                rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+                blob = np.expand_dims(rgb, axis=0)
+            else:
+                blob = cv2.dnn.blobFromImage(crop, 1.0 / 255.0, self._input_size, (0, 0, 0), swapRB=True)
             logits = np.squeeze(self._session.run(None, {self._input_name: blob})[0])
-            exp = np.exp(logits - np.max(logits))
-            probs = exp / np.sum(exp)
+            if np.all((logits >= 0.0) & (logits <= 1.0)) and abs(float(np.sum(logits)) - 1.0) < 1e-3:
+                probs = logits
+            else:
+                exp = np.exp(logits - np.max(logits))
+                probs = exp / np.sum(exp)
             top_idx = int(np.argmax(probs))
             top_conf = float(probs[top_idx])
             status: MaskStatus = (
