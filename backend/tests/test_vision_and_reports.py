@@ -328,7 +328,7 @@ def test_pose_person_regions_fall_back_to_whole_frame(tmp_path: Path) -> None:
 
     frame = np.zeros((120, 200, 3), dtype=np.uint8)
     regions = PoseLandmarkDetector(models_dir=tmp_path)._person_regions(frame)
-    assert regions == [(0, 0, 200, 120)]
+    assert regions == [((0, 0, 200, 120), (0, 0, 200, 120))]
 
 
 
@@ -340,3 +340,61 @@ def test_pose_prefers_full_model_over_lite(tmp_path: Path) -> None:
     (tmp_path / "custom").mkdir()
     (tmp_path / "custom" / "pose_landmarker_full.task").write_bytes(b"full")
     assert resolve_pose_model_path(tmp_path) == tmp_path / "custom" / "pose_landmarker_full.task"
+
+
+def _pose_points(nose_x: float, nose_y: float) -> list[dict[str, float]]:
+    pts = [{"x": nose_x, "y": nose_y, "z": 0.0, "visibility": 0.9, "presence": 0.9} for _ in range(33)]
+    # Rough left/right face layout in image space (pose 2/5 eyes, 9/10 mouth).
+    for idx, dx in ((1, 6), (2, 8), (3, 10), (7, 14), (4, -6), (5, -8), (6, -10), (8, -14), (9, 5), (10, -5)):
+        pts[idx] = {**pts[idx], "x": nose_x + dx}
+    return pts
+
+
+def test_pose_hides_points_outside_person_box() -> None:
+    from backend.app.vision.pose.detection import _hide_points_outside
+
+    pts = [{"x": 50.0, "y": 50.0, "visibility": 0.9}, {"x": 300.0, "y": 50.0, "visibility": 0.9}]
+    _hide_points_outside(pts, (0, 0, 100, 200))
+    assert pts[0]["visibility"] == 0.9
+    assert pts[1]["visibility"] == 0.0 and pts[1]["outside_person"] is True
+
+
+def test_pose_face_points_snap_to_face_detector() -> None:
+    from backend.app.detection.base import Detection, LandmarkPoint
+    from backend.app.vision.pose.detection import _snap_faces_to_detector
+
+    pose = {"bbox": {"x": 0, "y": 0, "width": 200, "height": 400}, "landmarks": _pose_points(90, 60)}
+    face = Detection(
+        x=80, y=30, width=40, height=50, confidence=0.95,
+        landmarks=[
+            LandmarkPoint(110, 50), LandmarkPoint(90, 50),  # eyes (unordered on purpose)
+            LandmarkPoint(100, 62),  # nose
+            LandmarkPoint(92, 72), LandmarkPoint(108, 72),  # mouth corners
+        ],
+    )
+    _snap_faces_to_detector([pose], [face])
+    lm = pose["landmarks"]
+    assert pose["face_refined"] is True
+    assert (lm[0]["x"], lm[0]["y"]) == (100, 62)
+    # Pose eye 2 sits right of eye 5 in this layout, so it gets the right-hand detector eye.
+    assert (lm[2]["x"], lm[5]["x"]) == (110, 90)
+    assert {lm[9]["x"], lm[10]["x"]} == {92, 108}
+
+
+def test_pose_face_snap_ignores_faces_outside_person() -> None:
+    from backend.app.detection.base import Detection, LandmarkPoint
+    from backend.app.vision.pose.detection import _snap_faces_to_detector
+
+    pose = {
+        "bbox": {"x": 0, "y": 0, "width": 100, "height": 300},
+        "landmarks": _pose_points(50, 40),
+        "face_refined": False,
+    }
+    far_face = Detection(
+        x=400, y=30, width=40, height=50, confidence=0.9,
+        landmarks=[LandmarkPoint(410, 50), LandmarkPoint(430, 50), LandmarkPoint(420, 60),
+                   LandmarkPoint(412, 70), LandmarkPoint(428, 70)],
+    )
+    _snap_faces_to_detector([pose], [far_face])
+    assert pose["face_refined"] is False
+    assert pose["landmarks"][0]["x"] == 50
