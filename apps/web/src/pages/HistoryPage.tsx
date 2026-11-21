@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, RotateCcw, Trash2 } from "lucide-react";
 import { api } from "../lib/api";
+import { StatusBadge } from "../components/StatusBadge";
 
 export function HistoryPage() {
   const queryClient = useQueryClient();
@@ -70,9 +71,7 @@ export function HistoryPage() {
                     <td className="p-3 capitalize">{job.job_type}</td>
                     <td className="p-3">{job.model_id}</td>
                     <td className="p-3">
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
-                        {job.status}
-                      </span>
+                      <StatusBadge status={job.status} />
                     </td>
                     <td className="p-3">{job.faces_detected}</td>
                     <td className="p-3">

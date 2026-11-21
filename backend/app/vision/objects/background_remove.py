@@ -92,8 +92,10 @@ def _predict_portrait_alpha(rgb: np.ndarray, models_dir: Path) -> np.ndarray:
         res = segmenter.segment(mp_img)
     if res.category_mask is None:
         return np.ones(rgb.shape[:2], dtype=np.float32)
-    cat = res.category_mask.numpy_view()
-    fg = (cat > 0).astype(np.float32)
+    cat = np.asarray(res.category_mask.numpy_view())
+    if cat.ndim == 3:
+        cat = cat[..., 0]
+    fg: np.ndarray = (cat > 0).astype(np.float32)
     fg = cv2.GaussianBlur(fg, (5, 5), 0)
     return np.asarray(np.clip(fg, 0.0, 1.0), dtype=np.float32)
 
@@ -120,7 +122,7 @@ def remove_background_pil(
 
     if background_mode == "transparent":
         rgba = np.dstack([rgb, np.round(alpha * 255.0).astype(np.uint8)])
-        return Image.fromarray(rgba, mode="RGBA")
+        return Image.fromarray(rgba)
 
     if background_mode == "blur":
         k = max(21, (min(rgb.shape[0], rgb.shape[1]) // 18) | 1)
@@ -131,7 +133,7 @@ def remove_background_pil(
 
     a3 = alpha[:, :, None]
     comp = np.clip(rgb.astype(np.float32) * a3 + bg * (1.0 - a3), 0, 255).astype(np.uint8)
-    return Image.fromarray(comp, mode="RGB")
+    return Image.fromarray(comp)
 
 
 def remove_background_to_file(

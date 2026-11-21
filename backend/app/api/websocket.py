@@ -127,10 +127,15 @@ async def webcam_stream_ws(websocket: WebSocket) -> None:
                         continue
 
             if model_id != current_model_id:
+                try:
+                    new_detector = container.registry.create_detector(
+                        DetectorConfig(model_id=model_id, models_dir=container.settings.resolved_models_dir)
+                    )
+                except FaceVisionError as exc:
+                    await websocket.send_json({"error": exc.message})
+                    continue
                 detector.release()
-                detector = container.registry.create_detector(
-                    DetectorConfig(model_id=model_id, models_dir=container.settings.resolved_models_dir)
-                )
+                detector = new_detector
                 current_model_id = model_id
 
             frame_b64 = payload.get("frame")

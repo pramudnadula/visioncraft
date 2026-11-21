@@ -35,7 +35,7 @@ describe("FaceVision Web App", () => {
     );
 
     render(<App />);
-    expect(screen.getByText("FaceVision")).toBeInTheDocument();
+    expect(screen.getAllByText("FaceVision").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Image Detection")).toBeInTheDocument();
     expect(screen.getByText("Video Detection")).toBeInTheDocument();
     expect(screen.getAllByText("Live Webcam").length).toBeGreaterThanOrEqual(1);
@@ -43,8 +43,13 @@ describe("FaceVision Web App", () => {
 
     // Simple mode hides AI Models until switched to Advanced
     expect(screen.queryByText("AI Models")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Simple" }));
+    fireEvent.click(screen.getByRole("button", { name: "Simple mode" }));
     expect(screen.getByText("AI Models")).toBeInTheDocument();
+
+    // Mobile drawer opens and closes
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    expect(screen.getByRole("button", { name: "Close navigation" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close navigation" }));
   });
 
   it("invokes onFilesSelected when files are chosen in DropZone", () => {

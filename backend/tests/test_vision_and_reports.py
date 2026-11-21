@@ -279,3 +279,28 @@ def test_asl_sign_language_registry_and_detector() -> None:
     assert res["language"] == "ASL"
     assert isinstance(res["asl_letters"], list)
     assert isinstance(res["gestures"], list)
+
+
+def test_privacy_alpha_accepts_three_dim_segmentation_mask() -> None:
+    """MediaPipe >=1.x returns (H, W, 1) category masks; privacy blur must not crash."""
+    from backend.app.detection.base import Detection
+    from backend.app.vision.faces.segmentation import FacePrivacyContext
+
+    head = np.zeros((120, 120, 1), dtype=np.float32)
+    head[30:90, 30:90] = 1.0
+    from backend.app.vision.faces.face_mesh import FaceMeshFace
+
+    mesh_face = FaceMeshFace(
+        index=0,
+        tracking_id=None,
+        bbox=(30, 30, 60, 60),
+        landmarks_px=np.full((478, 2), 60.0, dtype=np.float32),
+        landmarks_z=np.zeros(478, dtype=np.float32),
+        blendshapes={},
+        head_pose=None,
+    )
+    ctx = FacePrivacyContext(head_mask=head, mesh_faces=[mesh_face])
+    det = Detection(x=20, y=10, width=60, height=100, confidence=0.9)
+    alpha = ctx.build_roi_alpha((120, 120, 3), det, (20, 10, 80, 110), mesh_face=mesh_face)
+    assert alpha.shape[:2] == (100, 60)
+    assert float(alpha.max()) > 0.5

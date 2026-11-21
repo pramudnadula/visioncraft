@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { api } from "../lib/api";
+import { StatusBadge } from "../components/StatusBadge";
 
 export function DashboardPage() {
   const { data: stats, isLoading } = useQuery({
@@ -123,9 +124,7 @@ export function DashboardPage() {
                     <td className="py-2.5 capitalize">{job.job_type}</td>
                     <td className="py-2.5">{job.model_id}</td>
                     <td className="py-2.5">
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200">
-                        {job.status}
-                      </span>
+                      <StatusBadge status={job.status} />
                     </td>
                     <td className="py-2.5">{job.faces_detected}</td>
                   </tr>

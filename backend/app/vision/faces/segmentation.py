@@ -160,6 +160,8 @@ class FacePrivacyContext:
 
         if self.head_mask is not None:
             seg_roi = self.head_mask[y1:y2, x1:x2]
+            if seg_roi.ndim == 3:
+                seg_roi = seg_roi[..., 0]
             if mesh_face is not None:
                 # Combine face oval with segmented face/accessories inside ROI
                 mask = np.maximum(mask, seg_roi * 0.95)
@@ -200,7 +202,10 @@ def build_face_privacy_context(
                 with _CACHE_LOCK:
                     seg_res = segmenter.segment(mp_img)
                 if seg_res.category_mask is not None:
-                    cat = seg_res.category_mask.numpy_view()
+                    cat = np.asarray(seg_res.category_mask.numpy_view())
+                    # Newer MediaPipe releases return (H, W, 1); normalise to (H, W).
+                    if cat.ndim == 3:
+                        cat = cat[..., 0]
                     head_mask = np.isin(cat, _FACE_CLASSES).astype(np.float32)
             except Exception:
                 head_mask = None
