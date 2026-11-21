@@ -304,3 +304,19 @@ def test_privacy_alpha_accepts_three_dim_segmentation_mask() -> None:
     alpha = ctx.build_roi_alpha((120, 120, 3), det, (20, 10, 80, 110), mesh_face=mesh_face)
     assert alpha.shape[:2] == (100, 60)
     assert float(alpha.max()) > 0.5
+
+
+def test_mask_classifier_uses_mobilenet_scaling() -> None:
+    """The Keras MobileNetV2 mask model needs [-1, 1] input; [0, 1] mislabels bare faces as masked."""
+    from backend.app.vision.faces.mask_detection import preprocess_keras_mobilenet
+
+    crop = np.zeros((224, 224, 3), dtype=np.uint8)
+    crop[..., 0] = 255  # blue channel in BGR
+    blob = preprocess_keras_mobilenet(crop)
+    assert blob.shape == (1, 224, 224, 3)
+    assert blob.dtype == np.float32
+    assert float(blob.min()) == -1.0
+    assert float(blob.max()) == 1.0
+    # Channel order is preserved (BGR), not swapped to RGB.
+    assert float(blob[0, 0, 0, 0]) == 1.0
+    assert float(blob[0, 0, 0, 2]) == -1.0
