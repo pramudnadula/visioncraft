@@ -150,7 +150,7 @@ def test_pose_landmark_detector_with_tasks_model() -> None:
     res = PoseLandmarkDetector(models_dir=models_dir).detect(frame)
     assert res["pose_detected"] is False
     assert res["landmarks"] == []
-    assert res["model"] == "pose_landmarker_lite.task"
+    assert res["model"] in ("pose_landmarker_full.task", "pose_landmarker_lite.task")
 
 
 def test_privacy_modes_produce_distinct_outputs() -> None:
@@ -330,3 +330,13 @@ def test_pose_person_regions_fall_back_to_whole_frame(tmp_path: Path) -> None:
     regions = PoseLandmarkDetector(models_dir=tmp_path)._person_regions(frame)
     assert regions == [(0, 0, 200, 120)]
 
+
+
+def test_pose_prefers_full_model_over_lite(tmp_path: Path) -> None:
+    from backend.app.vision.pose.detection import resolve_pose_model_path
+
+    (tmp_path / "pose_landmarker_lite.task").write_bytes(b"lite")
+    assert resolve_pose_model_path(tmp_path) == tmp_path / "pose_landmarker_lite.task"
+    (tmp_path / "custom").mkdir()
+    (tmp_path / "custom" / "pose_landmarker_full.task").write_bytes(b"full")
+    assert resolve_pose_model_path(tmp_path) == tmp_path / "custom" / "pose_landmarker_full.task"

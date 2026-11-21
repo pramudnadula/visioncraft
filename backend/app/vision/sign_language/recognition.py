@@ -14,6 +14,7 @@ import numpy as np
 
 from backend.app.core.config import get_settings
 from backend.app.core.exceptions import ModelNotAvailableError
+from backend.app.vision.pose.detection import resolve_pose_model_path
 
 ASL_ONNX_FILENAME = "asl_yolo11n.onnx"
 GESTURE_TASK_FILENAME = "gesture_recognizer.task"
@@ -42,7 +43,7 @@ def list_sign_languages(models_dir: Path | None = None) -> list[dict[str, Any]]:
     resolved = models_dir if models_dir is not None else get_settings().resolved_models_dir
     landmarks_ready = (
         _resolve_model(resolved, "hand_landmarker.task") is not None
-        and _resolve_model(resolved, "pose_landmarker_lite.task") is not None
+        and resolve_pose_model_path(resolved) is not None
     )
     asl_ready = (
         _resolve_model(resolved, ASL_ONNX_FILENAME) is not None

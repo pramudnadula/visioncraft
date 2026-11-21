@@ -13,18 +13,25 @@ from backend.app.core.config import get_settings
 from backend.app.core.exceptions import ModelNotAvailableError
 from backend.app.vision.objects.detection import YOLOv8ONNXObjectDetector
 
-MODEL_FILENAME = "pose_landmarker_lite.task"
-MODEL_SHA256 = "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a"
+# Preferred first: "full" is noticeably more accurate on small or partly hidden people
+# (e.g. back rows of group photos); "lite" stays supported as a smaller fallback.
+MODEL_FILENAMES = ("pose_landmarker_full.task", "pose_landmarker_lite.task")
+MODEL_SHA256 = {
+    "pose_landmarker_full.task": "4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad",
+    "pose_landmarker_lite.task": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a",
+}
+MODEL_FILENAME = MODEL_FILENAMES[-1]  # Minimum required model, kept for compatibility.
 MODEL_LICENSE = "Apache-2.0 (Google MediaPipe)"
 
 
 def resolve_pose_model_path(models_dir: Path | None = None) -> Path | None:
-    """Locate ``pose_landmarker_lite.task`` inside the configured models directory."""
+    """Locate the best available pose landmarker (full, then lite) in the models directory."""
     base = models_dir if models_dir is not None else get_settings().resolved_models_dir
-    for directory in (base, base / "custom"):
-        candidate = directory / MODEL_FILENAME
-        if candidate.is_file():
-            return candidate
+    for name in MODEL_FILENAMES:
+        for directory in (base, base / "custom"):
+            candidate = directory / name
+            if candidate.is_file():
+                return candidate
     return None
 
 
@@ -58,7 +65,7 @@ class PoseLandmarkDetector:
         model_path = resolve_pose_model_path(self.models_dir)
         if model_path is None:
             raise ModelNotAvailableError(
-                f"Pose model '{MODEL_FILENAME}' is missing from {self.models_dir}."
+                f"No pose model ({' or '.join(MODEL_FILENAMES)}) found in {self.models_dir}."
             )
 
         import mediapipe as mp
@@ -118,7 +125,7 @@ class PoseLandmarkDetector:
             # First person's landmarks, kept for backwards compatibility.
             "landmarks": poses[0]["landmarks"] if poses else [],
             "poses": poses,
-            "model": MODEL_FILENAME,
+            "model": model_path.name,
             "license": MODEL_LICENSE,
         }
 
