@@ -320,3 +320,13 @@ def test_mask_classifier_uses_mobilenet_scaling() -> None:
     # Channel order is preserved (BGR), not swapped to RGB.
     assert float(blob[0, 0, 0, 0]) == 1.0
     assert float(blob[0, 0, 0, 2]) == -1.0
+
+
+def test_pose_person_regions_fall_back_to_whole_frame(tmp_path: Path) -> None:
+    """Without an object detector, pose runs on the whole frame (single-person mode)."""
+    from backend.app.vision.pose.detection import PoseLandmarkDetector
+
+    frame = np.zeros((120, 200, 3), dtype=np.uint8)
+    regions = PoseLandmarkDetector(models_dir=tmp_path)._person_regions(frame)
+    assert regions == [(0, 0, 200, 120)]
+

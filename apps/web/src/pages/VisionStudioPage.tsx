@@ -36,7 +36,7 @@ interface BoxShape {
 interface Overlay {
   boxes: BoxShape[];
   points: Pt[];
-  skeletons: Array<{ pts: Pt[]; edges: Array<[number, number]>; color: string }>;
+  skeletons: Array<{ pts: Array<Pt | null>; edges: Array<[number, number]>; color: string }>;
 }
 
 const HAND_EDGES: Array<[number, number]> = [
@@ -54,6 +54,8 @@ const POSE_EDGES: Array<[number, number]> = [
   [27, 29], [29, 31], [28, 30], [30, 32],
   [0, 2], [0, 5], [2, 7], [5, 8], [9, 10],
 ];
+
+const PERSON_COLORS = ["#22c55e", "#f59e0b", "#06b6d4", "#ec4899", "#a855f7", "#eab308", "#3b82f6", "#f43f5e"];
 
 const MASK_COLORS: Record<string, string> = {
   mask_detected: "#10b981",
@@ -124,8 +126,15 @@ function buildOverlay(task: VisionTask, r: Result): Overlay {
       });
     }
   } else if (task === "pose") {
-    const pts = arr(r.landmarks).map((p) => ({ x: num(p.x), y: num(p.y) }));
-    if (pts.length) o.skeletons.push({ pts, edges: POSE_EDGES, color: "#22c55e" });
+    // Newer backends return one entry per person in `poses`; older ones only `landmarks`.
+    const people = arr(r.poses).length ? arr(r.poses).map((p) => arr(p.landmarks)) : [arr(r.landmarks)];
+    people.forEach((lms, i) => {
+      // Hide points the model marks as not visible (occluded or out of frame).
+      const pts = lms.map((p) =>
+        typeof p.visibility === "number" && p.visibility < 0.5 ? null : { x: num(p.x), y: num(p.y) }
+      );
+      if (pts.some(Boolean)) o.skeletons.push({ pts, edges: POSE_EDGES, color: PERSON_COLORS[i % PERSON_COLORS.length] });
+    });
   } else if (task === "asl") {
     for (const l of arr(r.asl_letters)) {
       const b = (l.bbox ?? {}) as Result;
@@ -249,9 +258,19 @@ function Summary({ task, r }: { task: VisionTask; r: Result }) {
   }
   if (task === "pose") {
     return (
-      <div className="grid grid-cols-2 gap-2">
-        <Stat label="Person detected" value={r.pose_detected ? "Yes" : "No"} tone={r.pose_detected ? "text-emerald-500" : "text-slate-500"} />
-        <Stat label="Body landmarks" value={num(r.landmark_count)} />
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Stat
+            label="People with a pose"
+            value={arr(r.poses).length || (r.pose_detected ? 1 : 0)}
+            tone="text-emerald-500"
+          />
+          <Stat label="Landmarks per person" value={num(r.landmark_count)} />
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400">
+          Each person is drawn in a different colour. Points the model can't see (hidden behind someone, or out of
+          frame) are left out, so people standing behind others may show only a partial skeleton.
+        </p>
       </div>
     );
   }
@@ -581,23 +600,27 @@ export function VisionStudioPage() {
                         ))}
                         {overlay.skeletons.map((s, si) => (
                           <g key={`s${si}`}>
-                            {s.edges.map(([a, b]) =>
-                              s.pts[a] && s.pts[b] ? (
+                            {s.edges.map(([a, b]) => {
+                              const pa = s.pts[a];
+                              const pb = s.pts[b];
+                              return pa && pb ? (
                                 <line
                                   key={`${a}-${b}`}
-                                  x1={s.pts[a].x}
-                                  y1={s.pts[a].y}
-                                  x2={s.pts[b].x}
-                                  y2={s.pts[b].y}
+                                  x1={pa.x}
+                                  y1={pa.y}
+                                  x2={pb.x}
+                                  y2={pb.y}
                                   stroke={s.color}
                                   strokeWidth={stroke * 1.5}
                                   strokeLinecap="round"
                                 />
+                              ) : null;
+                            })}
+                            {s.pts.map((p, i) =>
+                              p ? (
+                                <circle key={i} cx={p.x} cy={p.y} r={stroke * 2} fill="#fff" stroke={s.color} strokeWidth={stroke} />
                               ) : null
                             )}
-                            {s.pts.map((p, i) => (
-                              <circle key={i} cx={p.x} cy={p.y} r={stroke * 2} fill="#fff" stroke={s.color} strokeWidth={stroke} />
-                            ))}
                           </g>
                         ))}
                         {overlay.boxes.map((b, i) => {
