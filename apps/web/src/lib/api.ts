@@ -206,7 +206,10 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   faceMeshStatus: () => request<FaceMeshStatus>("/vision/faces/mesh/status"),
-  analyzeFacialLandmarks: (payload: { media_id: string }) =>
+  analyzeFacialLandmarks: (payload: {
+    media_id: string;
+    settings?: { enabled: boolean; max_faces?: number; include_landmarks_in_report?: boolean };
+  }) =>
     request<Record<string, unknown>>("/vision/faces/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

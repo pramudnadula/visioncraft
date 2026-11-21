@@ -49,7 +49,7 @@ class FaceMeshSettings(BaseModel):
     """User-configurable face mesh options, shared by jobs, webcam and API requests."""
 
     enabled: bool = False
-    max_faces: int = Field(default=3, ge=1, le=10)
+    max_faces: int = Field(default=3, ge=1, le=20)
     min_confidence: float = Field(default=0.5, ge=0.1, le=0.95)
     color: str = "#00E5FF"
     feature_color: str = "#FFD400"
@@ -301,6 +301,34 @@ def mesh_status(models_dir: Path) -> dict[str, Any]:
     }
 
 
+_RawFace = tuple[np.ndarray, np.ndarray, dict[str, float], "dict[str, float] | None"]
+
+
+def _parse_landmarker_result(
+    result: Any, ox: int, oy: int, rw: int, rh: int, frame_w: int
+) -> list[_RawFace]:
+    """Convert a landmarker result on a region (ox, oy, rw, rh) to full-frame pixels.
+
+    Depth ``z`` is rescaled so it stays on the full frame's normalised-x scale.
+    """
+    raw: list[_RawFace] = []
+    for i, lms in enumerate(result.face_landmarks):
+        arr = np.array([(lm.x, lm.y, lm.z) for lm in lms], dtype=np.float32)
+        px = np.stack([ox + arr[:, 0] * rw, oy + arr[:, 1] * rh], axis=1)
+        blend = (
+            {c.category_name: float(c.score) for c in result.face_blendshapes[i]}
+            if i < len(result.face_blendshapes)
+            else {}
+        )
+        pose = (
+            _head_pose(result.facial_transformation_matrixes[i])
+            if i < len(result.facial_transformation_matrixes)
+            else None
+        )
+        raw.append((px, arr[:, 2] * (rw / max(frame_w, 1)), blend, pose))
+    return raw
+
+
 class FaceMeshService:
     """Runs MediaPipe Face Landmarker for stills (IMAGE) or streams (VIDEO, with tracking)."""
 
@@ -330,6 +358,10 @@ class FaceMeshService:
         from backend.app.processing.tracking import FaceTracker
 
         self._stream = stream
+        self._models_dir = models_dir
+        self._max_faces = max_faces
+        self._face_detector: Any = None
+        self._crop_landmarker: Any = None
         self._last_ts_ms = -1
         self._t0 = time.monotonic()
         self._tracker = FaceTracker(iou_threshold=0.25, max_missed_frames=10)
@@ -346,6 +378,18 @@ class FaceMeshService:
                 output_facial_transformation_matrixes=True,
             )
             self._landmarker = vision.FaceLandmarker.create_from_options(options)
+            if not stream:
+                # One face per crop: used for small faces the full-frame pass misses.
+                crop_options = vision.FaceLandmarkerOptions(
+                    base_options=BaseOptions(model_asset_path=str(path)),
+                    running_mode=vision.RunningMode.IMAGE,
+                    num_faces=1,
+                    min_face_detection_confidence=min(min_confidence, 0.3),
+                    min_face_presence_confidence=min(min_confidence, 0.3),
+                    output_face_blendshapes=True,
+                    output_facial_transformation_matrixes=True,
+                )
+                self._crop_landmarker = vision.FaceLandmarker.create_from_options(crop_options)
         except Exception as exc:  # MediaPipe raises generic RuntimeError/ValueError
             raise ModelInitializationError(f"Failed to start face mesh model: {exc}") from exc
 
@@ -368,21 +412,11 @@ class FaceMeshService:
         else:
             result = self._landmarker.detect(image)
 
-        raw: list[tuple[np.ndarray, np.ndarray, dict[str, float], dict[str, float] | None]] = []
-        for i, lms in enumerate(result.face_landmarks):
-            arr = np.array([(lm.x, lm.y, lm.z) for lm in lms], dtype=np.float32)
-            px = np.stack([arr[:, 0] * w, arr[:, 1] * h], axis=1)
-            blend = (
-                {c.category_name: float(c.score) for c in result.face_blendshapes[i]}
-                if i < len(result.face_blendshapes)
-                else {}
-            )
-            pose = (
-                _head_pose(result.facial_transformation_matrixes[i])
-                if i < len(result.facial_transformation_matrixes)
-                else None
-            )
-            raw.append((px, arr[:, 2], blend, pose))
+        raw = _parse_landmarker_result(result, 0, 0, w, h, w)
+        if not self._stream and len(raw) < self._max_faces:
+            raw.extend(self._detect_small_faces(frame, raw))
+            raw.sort(key=lambda r: float(r[0][:, 0].mean()))  # left-to-right
+            raw = raw[: self._max_faces]
 
         boxes: list[Detection] = []
         for px, _z, _b, _p in raw:
@@ -416,8 +450,95 @@ class FaceMeshService:
     ) -> cv2.typing.MatLike:
         return render_face_mesh(frame, faces, settings, self._connections)
 
+    def _detect_small_faces(
+        self, frame: cv2.typing.MatLike, found: list[_RawFace]
+    ) -> list[_RawFace]:
+        """Run the landmarker on a crop around each face the full-frame pass missed.
+
+        MediaPipe's built-in face finder is a short-range (selfie) model: on group
+        photos it often returns no faces at all. A dedicated face detector finds them,
+        and each enlarged crop gives the landmarker a large, centred face.
+        """
+
+        if self._crop_landmarker is None:
+            return []
+        detections = self._find_faces(frame)
+        if not detections:
+            return []
+        found_centres = [r[0].mean(axis=0) for r in found]
+        extra: list[_RawFace] = []
+        for det in sorted(detections, key=lambda d: d.width * d.height, reverse=True):
+            if len(found) + len(extra) >= self._max_faces:
+                break
+            cx, cy = det.x + det.width / 2, det.y + det.height / 2
+            size = max(det.width, det.height)
+            if any(np.hypot(c[0] - cx, c[1] - cy) < size * 0.5 for c in found_centres):
+                continue  # already meshed by the full-frame pass
+            best = None
+            # Wider context first; a tighter crop if the landmarker picks a neighbour.
+            for factor in (1.1, 0.75):
+                best = self._mesh_face_crop(frame, cx, cy, size * factor, size)
+                if best is not None:
+                    break
+            if best is None:
+                continue
+            extra.append(best)
+            found_centres.append(best[0].mean(axis=0))
+        return extra
+
+    def _mesh_face_crop(
+        self, frame: cv2.typing.MatLike, cx: float, cy: float, half: float, size: float
+    ) -> _RawFace | None:
+        """Mesh one face from a square crop centred on it (edges padded so it stays centred)."""
+        import mediapipe as mp
+
+        h, w = frame.shape[:2]
+        x1, y1 = int(round(cx - half)), int(round(cy - half))
+        side = int(round(half * 2))
+        if side <= 0:
+            return None
+        crop = np.zeros((side, side, 3), dtype=frame.dtype)
+        sx1, sy1 = max(0, x1), max(0, y1)
+        sx2, sy2 = min(w, x1 + side), min(h, y1 + side)
+        if sx2 <= sx1 or sy2 <= sy1:
+            return None
+        crop[sy1 - y1 : sy2 - y1, sx1 - x1 : sx2 - x1] = frame[sy1:sy2, sx1:sx2]
+        scale = max(1.0, 384.0 / side)
+        if scale > 1.0:
+            crop = cv2.resize(crop, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        rgb = np.ascontiguousarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+        result = self._crop_landmarker.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb))
+        parsed = _parse_landmarker_result(result, x1, y1, side, side, w)
+        if not parsed:
+            return None
+        best = min(parsed, key=lambda r: float(np.hypot(*(r[0].mean(axis=0) - (cx, cy)))))
+        if np.hypot(*(best[0].mean(axis=0) - (cx, cy))) > size * 0.6:
+            return None  # landmarker locked onto a neighbour's face in the crop
+        return best
+
+    def _find_faces(self, frame: cv2.typing.MatLike) -> list[Detection]:
+        if self._face_detector is None:
+            from backend.app.detection.registry import DetectorConfig, create_default_registry
+
+            try:
+                self._face_detector = create_default_registry(self._models_dir).create_detector(
+                    DetectorConfig(model_id="yunet", models_dir=self._models_dir)
+                )
+            except Exception:
+                self._face_detector = False  # not installed: keep full-frame behaviour
+        if not self._face_detector:
+            return []
+        try:
+            return list(self._face_detector.detect(frame))
+        except Exception:
+            return []
+
     def close(self) -> None:
         self._landmarker.close()
+        if self._crop_landmarker is not None:
+            self._crop_landmarker.close()
+        if self._face_detector:
+            self._face_detector.release()
 
 
 def summarize_faces(faces: list[FaceMeshFace], settings: FaceMeshSettings) -> dict[str, Any]:

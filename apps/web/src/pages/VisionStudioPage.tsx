@@ -398,7 +398,11 @@ export function VisionStudioPage() {
           : await api.detectObjects({ media_id: media.id, vehicles_only: true });
       else if (task === "objects") r = await api.detectObjects({ media_id: media.id, vehicles_only: false });
       else if (task === "mask") r = await api.detectFaceMasks({ media_id: media.id });
-      else if (task === "facial") r = await api.analyzeFacialLandmarks({ media_id: media.id });
+      else if (task === "facial") r = await api.analyzeFacialLandmarks({
+          media_id: media.id,
+          // Group photos: analyse up to 20 faces (the API default is 3).
+          settings: { enabled: true, max_faces: 20, include_landmarks_in_report: true },
+        });
       else if (task === "hands") r = await api.detectHands({ media_id: media.id });
       else if (task === "pose") r = await api.detectPose({ media_id: media.id });
       else r = await api.detectSignLanguage({ media_id: media.id });

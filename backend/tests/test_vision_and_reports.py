@@ -398,3 +398,17 @@ def test_pose_face_snap_ignores_faces_outside_person() -> None:
     _snap_faces_to_detector([pose], [far_face])
     assert pose["face_refined"] is False
     assert pose["landmarks"][0]["x"] == 50
+
+
+def test_face_mesh_crop_results_map_back_to_full_frame() -> None:
+    """Per-face crops must place landmarks in full-image pixels with frame-scaled depth."""
+    from types import SimpleNamespace
+
+    from backend.app.vision.faces.face_mesh import _parse_landmarker_result
+
+    lm = [SimpleNamespace(x=0.5, y=0.25, z=0.1)] * 478
+    result = SimpleNamespace(face_landmarks=[lm], face_blendshapes=[], facial_transformation_matrixes=[])
+    (px, z, blend, pose), = _parse_landmarker_result(result, 100, 40, 80, 80, 400)
+    assert tuple(px[0]) == (140.0, 60.0)
+    assert abs(float(z[0]) - 0.1 * 80 / 400) < 1e-6
+    assert blend == {} and pose is None

@@ -77,7 +77,7 @@ def _get_mesh_service(models_dir: Path) -> FaceMeshService | None:
         cached = _MESH_CACHE.get(models_dir)
         if cached is not None:
             return cached
-        service = FaceMeshService(models_dir, max_faces=10, min_confidence=0.35, stream=False)
+        service = FaceMeshService(models_dir, max_faces=20, min_confidence=0.35, stream=False)
         _MESH_CACHE[models_dir] = service
         return service
 
